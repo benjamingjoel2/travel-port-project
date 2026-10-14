@@ -9,6 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { StageBadge } from "@/components/stage-badge";
 import { BrandLogo } from "@/components/brand-logo";
+import { WorldMap } from "@/components/world-map";
+import { buildCountryShading } from "@/lib/geo";
 
 export const metadata = { title: "Overview" };
 
@@ -18,6 +20,7 @@ export default async function OverviewPage() {
   const byStage = stages.map((s) => ({ stage: s, count: brands.filter((b) => b.stageId === s.id).length }));
   const byRegion = [...regions.map((r) => ({ name: r.name, count: brands.filter((b) => b.regionId === r.id).length })), { name: "No region", count: brands.filter((b) => !b.regionId).length }].filter((r) => r.count > 0);
   const recent = [...brands].sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()).slice(0, 8);
+  const shading = buildCountryShading(brands);
   const overdue = brands.filter((b) => b.targetLaunchDate && !b.stage.countsAsLive && !b.stage.isTerminal && (daysUntil(b.targetLaunchDate) ?? 1) < 0);
 
   return (
@@ -36,6 +39,15 @@ export default async function OverviewPage() {
             <div className="text-sm text-muted-foreground tabular-nums">{Math.round((live / GOAL_BRAND_COUNT) * 100)}%</div>
           </div>
           <Progress value={live} max={GOAL_BRAND_COUNT} className="h-3" indicatorClassName="bg-success" />
+        </CardContent>
+      </Card>
+
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>World map</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <WorldMap shading={shading} stages={stages.filter((s) => !s.isTerminal)} />
         </CardContent>
       </Card>
 

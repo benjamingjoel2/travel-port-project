@@ -12,6 +12,7 @@ export type BrandSummary = Brand & {
   checklistDone: number;
   checklistTotal: number;
   checklistRequiredMissing: number;
+  missingRequiredLabels: string[];
   openBlockers: number;
 };
 
@@ -24,6 +25,10 @@ function summarize(b: Brand & { stage: PipelineStage; region: Region | null; own
     checklistDone: checklist.filter((c) => c.done).length,
     checklistTotal: checklist.length,
     checklistRequiredMissing: checklist.filter((c) => c.required && !c.done).length,
+    missingRequiredLabels: checklist
+      .filter((c) => c.required && !c.done)
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .map((c) => c.label),
     openBlockers: blockerRows.filter((x) => !x.resolvedAt).length,
   };
 }

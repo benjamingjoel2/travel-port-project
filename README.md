@@ -7,8 +7,8 @@ Private internal dashboard for the travel brand portfolio: where each of the ~10
 | Phase | Status | What it covers |
 | --- | --- | --- |
 | 1. Foundation | **Done** | Database, team login, brands table, brand create/edit, brand detail with build phases, activity log, team settings |
-| 2. Overview + pipeline board | Next | World map, kanban with drag-and-drop |
-| 3. Checklist, notes, blockers | Planned | Tick checklist items, add notes and blockers, edit the checklist template |
+| 2. Overview + pipeline board | **Done** | World map shaded by stage, kanban board with drag-and-drop (Live gated by the checklist) |
+| 3. Checklist, notes, blockers | Next | Tick checklist items, add notes and blockers, edit the checklist template |
 | 4. Prompts | Planned | Prompt versions, diffs, templates, generator |
 | 5. CSV import/export, bulk edit | Planned | |
 | 6. Integrations | Planned | Vercel, GitHub, uptime, PageSpeed (each optional) |
@@ -21,15 +21,16 @@ Private internal dashboard for the travel brand portfolio: where each of the ~10
 - Login: one shared team password (`DASHBOARD_PASSWORD`), then each person picks their name so the activity log knows who did what
 - Never indexed: login required, `robots.txt` disallows everything, every response carries `X-Robots-Tag: noindex`
 
-## Setting it up on Vercel (one-time, about 5 minutes)
+## Hosting (Vercel)
 
-1. **Import the repo.** On vercel.com click *Add New → Project*, pick this GitHub repository, leave every setting as it is, click *Deploy*. The first deploy runs in **demo mode**: you can click around with sample data but nothing is saved.
-2. **Attach a database.** In the Vercel project open the *Storage* tab → *Create Database* → choose **Neon** (Postgres) → accept the defaults → *Connect* to this project for all environments. Vercel adds `DATABASE_URL` to the project automatically.
-3. **Set the team password.** *Settings → Environment Variables* → add `DASHBOARD_PASSWORD` with the password your team will use. Apply to all environments.
-4. **Redeploy.** *Deployments* → open the ⋯ menu on the latest deployment → *Redeploy*. On first start the app creates the tables and loads the five starter brands.
-5. Open the site, enter the password, add yourself as the first team member (you become the owner).
+The app is deployed from this repository to the Vercel project **build-tracker** on the "Benjamin - Sevo" team: https://build-tracker-benjamin-sevo.vercel.app. Every push to GitHub deploys automatically.
 
-Every push to GitHub now gets its own preview link on the pull request, and merging to the main branch updates the live site.
+Two one-time settings live in the Vercel project, not in this repo:
+
+1. **Database.** Project → *Storage* → *Create Database* → **Neon** → connect to build-tracker. This adds `DATABASE_URL`. Until it exists the app runs in **demo mode** (sample data, nothing saved). After adding it, *Deployments → Redeploy*. On first start the app creates its tables and loads the five starter brands.
+2. **Team password.** Project → *Settings → Environment Variables* → `DASHBOARD_PASSWORD`. Change it any time, then redeploy. `SESSION_SECRET` keeps everyone signed in across password changes.
+
+If Vercel's own login screen appears before the app's, turn it off under *Settings → Deployment Protection → Vercel Authentication*; the app has its own password gate.
 
 ## Running locally
 

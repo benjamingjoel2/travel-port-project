@@ -1,15 +1,18 @@
+import { listBrands } from "@/lib/data/brands";
+import { getStages } from "@/lib/data/reference";
+import { canEdit, getActor } from "@/lib/auth";
 import { PageHeader } from "@/components/page-header";
-import { Card, CardContent } from "@/components/ui/card";
+import { PipelineBoard } from "@/components/pipeline-board";
 
 export const metadata = { title: "Pipeline" };
 
-export default function PipelinePage() {
+export default async function PipelinePage() {
+  const [brands, stages, actor] = await Promise.all([listBrands(), getStages(), getActor()]);
+  const editable = actor ? canEdit(actor.role) : false;
   return (
     <>
-      <PageHeader title="Pipeline" description="Kanban board by stage." />
-      <Card>
-        <CardContent className="text-sm text-muted-foreground">The drag-and-drop board arrives in Phase 2. Until then, use the Brands table and change stages from each brand page.</CardContent>
-      </Card>
+      <PageHeader title="Pipeline" description={editable ? "Drag a card to change its stage. Live needs the launch checklist complete." : "Drag-and-drop is available to editors."} />
+      <PipelineBoard brands={brands} stages={stages} editable={editable} />
     </>
   );
 }
