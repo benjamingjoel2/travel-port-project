@@ -24,6 +24,8 @@ function describe(entry: ActivityEntry): string {
       return `opened a blocker: ${d.description ?? ""}`;
     case "blocker_resolved":
       return `resolved a blocker: ${d.description ?? ""}`;
+    case "blocker_reopened":
+      return `reopened a blocker: ${d.description ?? ""}`;
     case "prompt_saved":
       return `saved prompt version ${d.version}`;
     default:

@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { StageBadge } from "@/components/stage-badge";
 import { TeamSettings } from "./team-settings";
+import { ChecklistTemplateEditor } from "./checklist-template-editor";
 
 export const metadata = { title: "Settings" };
 
@@ -27,22 +28,7 @@ export default async function SettingsPage() {
       <div className="grid gap-6 lg:grid-cols-2">
         <TeamSettings members={members} canManage={isOwner} selfId={actor.id} />
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Launch checklist template</CardTitle>
-            <CardDescription>Every new brand gets these items. Editing arrives in Phase 3.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ol className="list-decimal space-y-1 pl-5 text-sm">
-              {checklist.map((c) => (
-                <li key={c.id} className={c.active ? "" : "text-muted-foreground line-through"}>
-                  {c.label}
-                  {!c.required && <span className="ml-1 text-xs text-muted-foreground">(optional)</span>}
-                </li>
-              ))}
-            </ol>
-          </CardContent>
-        </Card>
+        <ChecklistTemplateEditor items={checklist} canManage={isOwner} />
 
         <Card>
           <CardHeader>

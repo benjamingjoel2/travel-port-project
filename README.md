@@ -8,8 +8,8 @@ Private internal dashboard for the travel brand portfolio: where each of the ~10
 | --- | --- | --- |
 | 1. Foundation | **Done** | Database, team login, brands table, brand create/edit, brand detail with build phases, activity log, team settings |
 | 2. Overview + pipeline board | **Done** | World map shaded by stage, kanban board with drag-and-drop (Live gated by the checklist) |
-| 3. Checklist, notes, blockers | Next | Tick checklist items, add notes and blockers, edit the checklist template |
-| 4. Prompts | Planned | Prompt versions, diffs, templates, generator |
+| 3. Checklist, notes, blockers | **Done** | Tick checklist items, add notes and blockers, edit the checklist template |
+| 4. Prompts | Next | Prompt versions, diffs, templates, generator |
 | 5. CSV import/export, bulk edit | Planned | |
 | 6. Integrations | Planned | Vercel, GitHub, uptime, PageSpeed (each optional) |
 

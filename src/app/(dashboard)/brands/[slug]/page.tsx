@@ -15,6 +15,9 @@ import { ProgressPill } from "@/components/progress-pill";
 import { PhaseList } from "@/components/phase-list";
 import { StageSelect } from "@/components/stage-select";
 import { ActivityList } from "@/components/activity-list";
+import { ChecklistPanel } from "@/components/checklist-panel";
+import { NotesPanel } from "@/components/notes-panel";
+import { BlockersPanel } from "@/components/blockers-panel";
 
 export async function generateMetadata({ params }: PageProps<"/brands/[slug]">) {
   const { slug } = await params;
@@ -114,7 +117,9 @@ export default async function BrandDetailPage({ params }: PageProps<"/brands/[sl
           <TabsTrigger value="build">Build</TabsTrigger>
           <TabsTrigger value="checklist">Checklist</TabsTrigger>
           <TabsTrigger value="prompt">Prompt</TabsTrigger>
-          <TabsTrigger value="notes">Notes &amp; blockers</TabsTrigger>
+          <TabsTrigger value="notes">
+            Notes &amp; blockers{openBlockers.length > 0 && <span className="ml-1 size-1.5 rounded-full bg-destructive" />}
+          </TabsTrigger>
           <TabsTrigger value="activity">Activity</TabsTrigger>
           <TabsTrigger value="about">About</TabsTrigger>
         </TabsList>
@@ -135,23 +140,10 @@ export default async function BrandDetailPage({ params }: PageProps<"/brands/[sl
           <Card>
             <CardHeader>
               <CardTitle>Launch checklist</CardTitle>
-              <CardDescription>
-                {missingRequired.length === 0 ? "All required items done. This brand can go live." : `${missingRequired.length} required item${missingRequired.length === 1 ? "" : "s"} left before this brand can go live.`}
-              </CardDescription>
+              <CardDescription>Every required item must be ticked before this brand can move to Live.</CardDescription>
             </CardHeader>
             <CardContent>
-              <ul className="divide-y">
-                {brand.checklist.map((item) => (
-                  <li key={item.id} className="flex items-start gap-3 py-2 text-sm">
-                    <span className={`mt-0.5 flex size-4 shrink-0 items-center justify-center rounded border ${item.done ? "border-success bg-success text-white" : "border-input"}`}>{item.done ? "✓" : ""}</span>
-                    <div className="flex-1">
-                      <div className={item.done ? "text-muted-foreground line-through" : ""}>{item.label}</div>
-                      {!item.required && <span className="text-xs text-muted-foreground">Optional</span>}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-              <p className="mt-3 text-xs text-muted-foreground">Ticking items, details and notes arrive in Phase 3.</p>
+              <ChecklistPanel brandId={brand.id} items={brand.checklist} editable={editable} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -167,15 +159,25 @@ export default async function BrandDetailPage({ params }: PageProps<"/brands/[sl
         </TabsContent>
 
         <TabsContent value="notes">
-          <Card>
-            <CardHeader>
-              <CardTitle>Notes and blockers</CardTitle>
-              <CardDescription>Adding notes and blockers arrives in Phase 3.</CardDescription>
-            </CardHeader>
-            <CardContent className="text-sm text-muted-foreground">
-              {brand.notes.length} note(s), {openBlockers.length} open blocker(s).
-            </CardContent>
-          </Card>
+          <div className="grid gap-6 lg:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Blockers</CardTitle>
+                <CardDescription>Open blockers show as a red marker on the board and on the Overview.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <BlockersPanel brandId={brand.id} blockers={brand.blockers} editable={editable} />
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>Notes</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <NotesPanel brandId={brand.id} notes={brand.notes} editable={editable} actorId={actor?.id} isOwner={actor?.role === "owner"} />
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         <TabsContent value="activity">
