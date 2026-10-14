@@ -11,11 +11,13 @@ import { StageBadge } from "@/components/stage-badge";
 import { BrandLogo } from "@/components/brand-logo";
 import { WorldMap } from "@/components/world-map";
 import { buildCountryShading } from "@/lib/geo";
+import { getSyncState, isSyncConfigured } from "@/lib/sync";
 
 export const metadata = { title: "Overview" };
 
 export default async function OverviewPage() {
-  const [brands, stages, regions, blockers] = await Promise.all([listBrands(), getStages(), getRegions(), getOpenBlockers()]);
+  const [brands, stages, regions, blockers, sync] = await Promise.all([listBrands(), getStages(), getRegions(), getOpenBlockers(), getSyncState()]);
+  const syncNote = isSyncConfigured() ? (sync.last ? ` Synced with Vercel and GitHub ${timeAgo(sync.last.at)}.` : " Syncing with Vercel and GitHub…") : "";
   const live = brands.filter((b) => b.stage.countsAsLive).length;
   const byStage = stages.map((s) => ({ stage: s, count: brands.filter((b) => b.stageId === s.id).length }));
   const byRegion = [...regions.map((r) => ({ name: r.name, count: brands.filter((b) => b.regionId === r.id).length })), { name: "No region", count: brands.filter((b) => !b.regionId).length }].filter((r) => r.count > 0);
@@ -25,7 +27,7 @@ export default async function OverviewPage() {
 
   return (
     <>
-      <PageHeader title="Overview" description="Where the portfolio stands today." />
+      <PageHeader title="Overview" description={`Where the portfolio stands today.${syncNote}`} />
 
       <Card className="mb-6">
         <CardContent className="flex flex-col gap-3">

@@ -5,8 +5,13 @@ export default defineConfig({
   test: {
     include: ["src/**/*.test.ts"],
     environment: "node",
+    testTimeout: 30_000,
   },
   resolve: {
-    alias: { "@": path.resolve(__dirname, "src") },
+    alias: {
+      "@": path.resolve(__dirname, "src"),
+      // Next's guard module throws outside a React server bundle; tests import server code directly.
+      "server-only": path.resolve(__dirname, "src/test/server-only-stub.ts"),
+    },
   },
 });

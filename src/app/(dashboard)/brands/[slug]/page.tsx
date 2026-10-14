@@ -15,6 +15,8 @@ import { ProgressPill } from "@/components/progress-pill";
 import { PhaseList } from "@/components/phase-list";
 import { StageSelect } from "@/components/stage-select";
 import { ActivityList } from "@/components/activity-list";
+import { DeployLine } from "@/components/deploy-status";
+import { brandActivity } from "@/lib/deploy-info";
 import { ChecklistPanel } from "@/components/checklist-panel";
 import { NotesPanel } from "@/components/notes-panel";
 import { BlockersPanel } from "@/components/blockers-panel";
@@ -69,6 +71,10 @@ export default async function BrandDetailPage({ params }: PageProps<"/brands/[sl
             <PriorityBadge priority={brand.priority} />
             {brand.targetLaunchDate && <span>· Target {formatDate(brand.targetLaunchDate)}</span>}
             {brand.launchedAt && <span>· Launched {formatDate(brand.launchedAt)}</span>}
+            {brand.source !== "manual" && <span className="rounded bg-muted px-1.5 py-0.5 text-xs">Auto-added from {brand.source === "vercel" ? "Vercel" : brand.source === "github" ? "GitHub" : brand.source}</span>}
+          </div>
+          <div className="mt-1.5">
+            <DeployLine activity={brandActivity(brand.snapshots)} />
           </div>
           {links.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-1.5">
