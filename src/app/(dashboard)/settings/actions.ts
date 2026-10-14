@@ -20,7 +20,7 @@ export type MemberFormState = { error?: string; ok?: boolean } | undefined;
 export async function addMember(_prev: MemberFormState, formData: FormData): Promise<MemberFormState> {
   try {
     await requireRole("owner");
-    const parsed = memberSchema.safeParse({ name: formData.get("name"), email: formData.get("email") ?? "", role: formData.get("role") ?? "editor" });
+    const parsed = memberSchema.safeParse({ name: formData.get("name") ?? "", email: formData.get("email") ?? "", role: formData.get("role") ?? "editor" });
     if (!parsed.success) return { error: parsed.error.issues[0]?.message };
     const db = await getDb();
     await db.insert(teamMembers).values({ name: parsed.data.name, email: parsed.data.email || null, role: parsed.data.role });
