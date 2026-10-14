@@ -11,10 +11,11 @@ import { StageBadge, PriorityBadge } from "@/components/stage-badge";
 import { BrandLogo } from "@/components/brand-logo";
 import { ProgressPill } from "@/components/progress-pill";
 import { BrandFilterBar } from "./filter-bar";
+import { DeployDot } from "@/components/deploy-status";
 
 export const metadata = { title: "Brands" };
 
-const SORTS: BrandSort[] = ["name", "country", "region", "stage", "phases", "checklist", "owner", "priority", "target", "updated"];
+const SORTS: BrandSort[] = ["name", "country", "region", "stage", "phases", "checklist", "owner", "priority", "target", "activity", "updated"];
 
 function SortHead({ k, sort, dir, href, children, className }: { k: BrandSort; sort: BrandSort; dir: "asc" | "desc"; href: string; children: React.ReactNode; className?: string }) {
   return (
@@ -84,13 +85,14 @@ export default async function BrandsPage({ searchParams }: PageProps<"/brands">)
               <SortHead k="owner" sort={filters.sort!} dir={filters.dir!} href={sortLink("owner")}>Owner</SortHead>
               <SortHead k="priority" sort={filters.sort!} dir={filters.dir!} href={sortLink("priority")}>Priority</SortHead>
               <SortHead k="target" sort={filters.sort!} dir={filters.dir!} href={sortLink("target")}>Target</SortHead>
+              <SortHead k="activity" sort={filters.sort!} dir={filters.dir!} href={sortLink("activity")}>Build activity</SortHead>
               <SortHead k="updated" sort={filters.sort!} dir={filters.dir!} href={sortLink("updated")}>Updated</SortHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {brands.length === 0 && (
               <TableRow>
-                <TableCell colSpan={11} className="py-10 text-center text-muted-foreground">
+                <TableCell colSpan={12} className="py-10 text-center text-muted-foreground">
                   No brands match. <Link href="/brands" className="underline">Clear filters</Link> or <Link href="/brands/new" className="underline">add one</Link>.
                 </TableCell>
               </TableRow>
@@ -124,6 +126,16 @@ export default async function BrandsPage({ searchParams }: PageProps<"/brands">)
                     <PriorityBadge priority={b.priority} />
                   </TableCell>
                   <TableCell className={overdue ? "text-destructive" : "text-muted-foreground"}>{formatDate(b.targetLaunchDate)}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {b.activity.at ? (
+                      <span className="inline-flex items-center gap-1.5" title={b.activity.deploy?.commitMessage ?? undefined}>
+                        {b.activity.deploy && <DeployDot state={b.activity.deploy.state} />}
+                        {timeAgo(b.activity.at)}
+                      </span>
+                    ) : (
+                      "—"
+                    )}
+                  </TableCell>
                   <TableCell className="text-muted-foreground">{timeAgo(b.updatedAt)}</TableCell>
                 </TableRow>
               );

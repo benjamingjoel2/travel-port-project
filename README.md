@@ -32,6 +32,26 @@ Two one-time settings live in the Vercel project, not in this repo:
 
 If Vercel's own login screen appears before the app's, turn it off under *Settings → Deployment Protection → Vercel Authentication*; the app has its own password gate.
 
+## Auto-sync with Vercel and GitHub
+
+The tracker finds brands on its own. Every Vercel project on the team and every GitHub repo on the account is checked:
+
+- **Already a brand?** Links (repo, Vercel project, staging URL, custom domain) are filled in where empty, and the latest deploy and commit message show on the brand page. Brands still at Idea, Named or Prompt ready move to **Building** once build activity appears. Sync never moves a brand further than that and never overwrites what someone typed.
+- **New and the country is clear?** It's added as a brand at Building. The country comes from the repo or project name (`costa-rica`, `bhutan`), or from the repo's README and CLAUDE.md when one country clearly dominates (Escale Voyages → Benin).
+- **Country unclear?** It waits in *Settings → Auto-sync → Needs a country*, where you pick a country or ignore it.
+
+It runs in the background whenever someone opens the tracker (at most every 10 minutes), nightly via Vercel Cron, and on demand with *Sync now*.
+
+Settings it reads (Vercel project → Settings → Environment Variables):
+
+| Variable | Needed | What it is |
+| --- | --- | --- |
+| `VERCEL_TOKEN` | yes | Vercel access token (vercel.com → Account Settings → Tokens), scoped to the team |
+| `VERCEL_TEAM_ID` | yes | The team id, e.g. `team_…` |
+| `GITHUB_OWNER` | optional | GitHub account to scan for repos without a Vercel project. Defaults to the owner of the linked repos |
+| `GITHUB_TOKEN` | optional | GitHub token (read-only). Adds private repos and avoids GitHub's anonymous rate limit |
+| `CRON_SECRET` | yes, for the nightly run | Any long random string; Vercel Cron sends it automatically |
+
 ## Running locally
 
 ```bash

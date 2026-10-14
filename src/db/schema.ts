@@ -117,6 +117,12 @@ export const brands = pgTable(
     stagingUrl: text("staging_url"),
     productionDomain: text("production_domain"),
     launchedAt: timestamp("launched_at", { withTimezone: true }),
+    /** Vercel project id, set by auto-sync. */
+    vercelProjectId: text("vercel_project_id").unique(),
+    /** "owner/repo" (lowercase), set by auto-sync. */
+    githubRepo: text("github_repo").unique(),
+    /** manual | vercel | github | csv */
+    source: text("source").notNull().default("manual"),
     ...timestamps,
   },
   (t) => [index("brands_stage_idx").on(t.stageId), index("brands_region_idx").on(t.regionId)],
@@ -239,8 +245,35 @@ export const integrationSnapshots = pgTable(
     data: jsonb("data").$type<Record<string, unknown>>().notNull(),
     fetchedAt: timestamp("fetched_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("integration_brand_kind_idx").on(t.brandId, t.kind)],
+  (t) => [uniqueIndex("integration_brand_kind_idx").on(t.brandId, t.kind)],
 );
+
+/**
+ * Everything auto-sync has seen on Vercel and GitHub. Doubles as the review
+ * queue (status "pending") and the ignore list (status "ignored").
+ */
+export const syncItems = pgTable("sync_items", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  /** "vercel:<projectId>" or "github:<owner/repo>" */
+  key: text("key").notNull().unique(),
+  kind: text("kind").notNull(),
+  name: text("name").notNull(),
+  repo: text("repo"),
+  url: text("url"),
+  /** pending | ignored | linked */
+  status: text("status").notNull().default("pending"),
+  detectedCountryCode: text("detected_country_code"),
+  brandId: uuid("brand_id").references(() => brands.id, { onDelete: "set null" }),
+  firstSeenAt: timestamp("first_seen_at", { withTimezone: true }).notNull().defaultNow(),
+  lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Small key/value store for app-wide state such as the last sync result. */
+export const appState = pgTable("app_state", {
+  key: text("key").primaryKey(),
+  value: jsonb("value").$type<Record<string, unknown>>().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
 
 /* ---------- relations ---------- */
 
@@ -254,6 +287,11 @@ export const brandsRelations = relations(brands, ({ one, many }) => ({
   notes: many(notes),
   blockers: many(blockers),
   activity: many(activityLog),
+  snapshots: many(integrationSnapshots),
+}));
+
+export const integrationSnapshotsRelations = relations(integrationSnapshots, ({ one }) => ({
+  brand: one(brands, { fields: [integrationSnapshots.brandId], references: [brands.id] }),
 }));
 
 export const buildPhasesRelations = relations(buildPhases, ({ one }) => ({
@@ -294,3 +332,5 @@ export type Prompt = typeof prompts.$inferSelect;
 export type Note = typeof notes.$inferSelect;
 export type Blocker = typeof blockers.$inferSelect;
 export type ActivityEntry = typeof activityLog.$inferSelect;
+export type IntegrationSnapshot = typeof integrationSnapshots.$inferSelect;
+export type SyncItem = typeof syncItems.$inferSelect;

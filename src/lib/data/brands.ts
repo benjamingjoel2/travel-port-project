@@ -1,7 +1,8 @@
 import "server-only";
 import { desc, eq, isNull, and } from "drizzle-orm";
 import { getDb } from "@/db";
-import { blockers, brands, type Brand, type BrandChecklistItem, type BuildPhase, type PipelineStage, type Region, type TeamMember, type Blocker } from "@/db/schema";
+import { blockers, brands, type Brand, type BrandChecklistItem, type BuildPhase, type PipelineStage, type Region, type TeamMember, type Blocker, type IntegrationSnapshot } from "@/db/schema";
+import { brandActivity, type BrandActivity } from "@/lib/deploy-info";
 
 export type BrandSummary = Brand & {
   stage: PipelineStage;
@@ -14,10 +15,13 @@ export type BrandSummary = Brand & {
   checklistRequiredMissing: number;
   missingRequiredLabels: string[];
   openBlockers: number;
+  activity: BrandActivity;
 };
 
-function summarize(b: Brand & { stage: PipelineStage; region: Region | null; owner: TeamMember | null; phases: BuildPhase[]; checklist: BrandChecklistItem[]; blockers: Blocker[] }): BrandSummary {
-  const { phases, checklist, blockers: blockerRows, ...rest } = b;
+function summarize(
+  b: Brand & { stage: PipelineStage; region: Region | null; owner: TeamMember | null; phases: BuildPhase[]; checklist: BrandChecklistItem[]; blockers: Blocker[]; snapshots: IntegrationSnapshot[] },
+): BrandSummary {
+  const { phases, checklist, blockers: blockerRows, snapshots, ...rest } = b;
   return {
     ...rest,
     phasesDone: phases.filter((p) => p.status === "done").length,
@@ -30,10 +34,11 @@ function summarize(b: Brand & { stage: PipelineStage; region: Region | null; own
       .sort((a, b) => a.sortOrder - b.sortOrder)
       .map((c) => c.label),
     openBlockers: blockerRows.filter((x) => !x.resolvedAt).length,
+    activity: brandActivity(snapshots),
   };
 }
 
-export type BrandSort = "name" | "country" | "region" | "stage" | "phases" | "checklist" | "owner" | "priority" | "target" | "updated";
+export type BrandSort = "name" | "country" | "region" | "stage" | "phases" | "checklist" | "owner" | "priority" | "target" | "activity" | "updated";
 
 export type BrandFilters = {
   q?: string;
@@ -50,7 +55,7 @@ const PRIORITY_RANK = { high: 0, medium: 1, low: 2 } as const;
 export async function listBrands(filters: BrandFilters = {}): Promise<BrandSummary[]> {
   const db = await getDb();
   const rows = await db.query.brands.findMany({
-    with: { stage: true, region: true, owner: true, phases: true, checklist: true, blockers: true },
+    with: { stage: true, region: true, owner: true, phases: true, checklist: true, blockers: true, snapshots: true },
     orderBy: [desc(brands.updatedAt)],
   });
   let list = rows.map(summarize);
@@ -87,6 +92,8 @@ export async function listBrands(filters: BrandFilters = {}): Promise<BrandSumma
         return dir * (PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority]);
       case "target":
         return dir * cmpStr(a.targetLaunchDate, b.targetLaunchDate);
+      case "activity":
+        return dir * ((a.activity.at?.getTime() ?? 0) - (b.activity.at?.getTime() ?? 0));
       case "updated":
       default:
         return -dir * (a.updatedAt.getTime() - b.updatedAt.getTime());
@@ -109,6 +116,7 @@ export async function getBrandBySlug(slug: string) {
       notes: { with: { author: true }, orderBy: (n, { desc }) => [desc(n.createdAt)] },
       blockers: { orderBy: (b, { desc }) => [desc(b.openedAt)] },
       activity: { orderBy: (a, { desc }) => [desc(a.createdAt)], limit: 50 },
+      snapshots: true,
     },
   });
 }
