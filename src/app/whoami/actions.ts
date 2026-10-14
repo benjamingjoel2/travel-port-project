@@ -26,7 +26,7 @@ const newMemberSchema = z.object({
 });
 
 export async function createAndChooseMember(_prev: WhoAmIState, formData: FormData): Promise<WhoAmIState> {
-  const parsed = newMemberSchema.safeParse({ name: formData.get("name"), email: formData.get("email"), role: formData.get("role") ?? "editor" });
+  const parsed = newMemberSchema.safeParse({ name: formData.get("name") ?? "", email: formData.get("email") ?? "", role: formData.get("role") ?? "editor" });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message };
   const db = await getDb();
   const [{ value: existing }] = await db.select({ value: count() }).from(teamMembers);

@@ -7,11 +7,14 @@ import { isPasswordRequired, safeEqual } from "@/lib/auth/session-core";
 
 export type LoginState = { error?: string } | undefined;
 
-const schema = z.object({ password: z.string().min(1, "Enter the team password."), next: z.string().optional() });
+const schema = z.object({
+  password: z.string({ error: "Enter the team password." }).min(1, "Enter the team password."),
+  next: z.string().nullish(),
+});
 
 export async function loginAction(_prev: LoginState, formData: FormData): Promise<LoginState> {
   if (!isPasswordRequired()) redirect("/");
-  const parsed = schema.safeParse({ password: formData.get("password"), next: formData.get("next") });
+  const parsed = schema.safeParse({ password: formData.get("password") ?? "", next: formData.get("next") });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message };
 
   // Tiny delay to blunt brute-force attempts.
