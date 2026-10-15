@@ -149,6 +149,65 @@ export async function listRecentReposViaVercel(token: string, teamId: string | u
     });
 }
 
+/**
+ * Every repo the Vercel GitHub connection can see, private ones included, without a
+ * GitHub token. Vercel's repo search matches word prefixes and returns a handful of
+ * results per query, so searching each letter and digit covers the whole account;
+ * any query that comes back full is widened to two-character prefixes.
+ */
+export async function listAllReposViaVercel(token: string, teamId: string | undefined): Promise<GithubRepo[]> {
+  const qs = teamId ? `&teamId=${encodeURIComponent(teamId)}` : "";
+  const chars = "abcdefghijklmnopqrstuvwxyz0123456789".split("");
+  const queue = [...chars];
+  const byName = new Map<string, GithubRepo>();
+  let ok = 0;
+  let failed = 0;
+  const FULL_PAGE = 8;
+
+  const run = async (q: string) => {
+    try {
+      const data = await fetchJson<{ repos?: { url: string; name: string; namespace?: string; owner?: { name?: string }; private?: boolean; updatedAt?: number; provider?: string }[] }>(
+        `https://api.vercel.com/v1/integrations/search-repo?provider=github&query=${encodeURIComponent(q)}${qs}`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      ok++;
+      const repos = data.repos ?? [];
+      for (const r of repos) {
+        if ((r.provider ?? "github") !== "github") continue;
+        const owner = r.namespace ?? r.owner?.name ?? "";
+        const fullName = `${owner}/${r.name}`.toLowerCase();
+        if (!byName.has(fullName)) {
+          byName.set(fullName, { fullName, name: r.name, htmlUrl: r.url, pushedAt: r.updatedAt ? new Date(r.updatedAt).toISOString() : null, private: Boolean(r.private) });
+        }
+      }
+      if (repos.length >= FULL_PAGE && q.length < 3) queue.push(...chars.map((c) => q + c));
+    } catch {
+      failed++;
+    }
+  };
+
+  // A few at a time keeps this to a couple of seconds without hammering the API.
+  while (queue.length) await Promise.all(queue.splice(0, 6).map(run));
+  if (ok === 0 && failed > 0) throw new Error("Vercel repo search failed");
+  return [...byName.values()];
+}
+
+/** Visible text of a deployed site (title, description, body) for country detection. */
+export async function fetchSiteText(url: string): Promise<string> {
+  try {
+    const res = await fetch(url, { cache: "no-store", redirect: "follow", signal: AbortSignal.timeout(8_000), headers: { "User-Agent": "build-tracker" } });
+    if (!res.ok || !(res.headers.get("content-type") ?? "").includes("text/html")) return "";
+    const html = (await res.text()).slice(0, 300_000);
+    return html
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/&[a-z#0-9]+;/gi, " ");
+  } catch {
+    return "";
+  }
+}
+
 /** README.md + CLAUDE.md text for country detection. Empty string when unreachable. */
 export async function fetchRepoDocs(fullName: string, token?: string): Promise<string> {
   const headers: Record<string, string> = { "User-Agent": "build-tracker" };

@@ -24,6 +24,8 @@ export type SyncDeps = {
   /** Recently updated repos via Vercel's GitHub connection (optional, no rate limit). */
   listRecentRepos?: (token: string, teamId?: string) => Promise<GithubRepo[]>;
   fetchRepoDocs: (fullName: string, token?: string) => Promise<string>;
+  /** Text of a deployed site, for projects whose name and README don't say the country. */
+  fetchSiteText?: (url: string) => Promise<string>;
 };
 
 export type SyncSummary = {
@@ -204,8 +206,15 @@ async function applyCandidates(db: Db, candidates: Candidate[], cfg: SyncConfig,
     if (!country && !brand && !existingItem && c.repo) {
       country = detectCountryFromText(await deps.fetchRepoDocs(c.repo, cfg.githubToken));
     }
+    // Still unknown (private repo, or a Vercel project with no repo): read the live site.
+    const siteUrl = c.vercel ? (c.vercel.customDomain ? withProtocol(c.vercel.customDomain) : c.vercel.stagingUrl) : null;
+    if (!country && !brand && !existingItem && siteUrl && deps.fetchSiteText) {
+      country = detectCountryFromText(await deps.fetchSiteText(siteUrl));
+    }
     if (!brand && country) {
-      const sameCountry = brands.filter((b) => b.countryCode === country && !b.vercelProjectId && !b.githubRepo);
+      // A Vercel project joins the one brand in that country that has no Vercel project yet,
+      // even if that brand came from a GitHub repo (e.g. "antarctica" repo + "seventh-continent" site).
+      const sameCountry = brands.filter((b) => b.countryCode === country && !b.vercelProjectId && (c.vercel ? true : !b.githubRepo));
       if (sameCountry.length === 1) brand = sameCountry[0];
     }
 
@@ -242,6 +251,12 @@ async function applyCandidates(db: Db, candidates: Candidate[], cfg: SyncConfig,
 
     // 4. Link and fill gaps. Never overwrite what a person typed.
     const patch: Partial<schema.NewBrand> = {};
+    // A brand auto-named after its repo ("Antarctica") takes the site's name ("Seventh Continent").
+    const autoName = brand.githubRepo ? humanize(repoName(brand.githubRepo) ?? "") : null;
+    if (c.vercel && brand.source === "github" && autoName && brand.name === autoName && humanize(c.vercel.name) !== autoName) {
+      patch.name = humanize(c.vercel.name);
+      patch.slug = uniqueSlug(slugify(patch.name));
+    }
     const wasLinked = Boolean(brand.vercelProjectId || brand.githubRepo);
     if (c.vercel && !brand.vercelProjectId && !brands.some((b) => b.vercelProjectId === c.vercel!.id)) patch.vercelProjectId = c.vercel.id;
     if (c.repo && !brand.githubRepo && !brands.some((b) => b.githubRepo === c.repo)) patch.githubRepo = c.repo;

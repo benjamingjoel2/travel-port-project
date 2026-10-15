@@ -1,6 +1,5 @@
-import { after } from "next/server";
 import { getDbMode } from "@/db";
-import { maybeSync, SYNC_INTERVAL_MS } from "@/lib/sync";
+import { SYNC_INTERVAL_MS } from "@/lib/sync";
 import { AutoRefresh } from "@/components/auto-refresh";
 import { isPasswordRequired, requireActor } from "@/lib/auth";
 import { AppSidebar } from "@/components/app-sidebar";
@@ -9,8 +8,6 @@ import { MemberMenu } from "@/components/member-menu";
 export default async function DashboardLayout({ children }: LayoutProps<"/">) {
   const actor = await requireActor();
   const mode = getDbMode();
-  // Pick up new Vercel projects and GitHub repos in the background after the page is sent.
-  after(() => maybeSync().catch((e) => console.error("auto-sync failed", e)));
 
   return (
     <div className="min-h-screen">

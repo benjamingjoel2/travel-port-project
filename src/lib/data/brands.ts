@@ -3,6 +3,7 @@ import { desc, eq, isNull, and } from "drizzle-orm";
 import { getDb } from "@/db";
 import { blockers, brands, type Brand, type BrandChecklistItem, type BuildPhase, type PipelineStage, type Region, type TeamMember, type Blocker, type IntegrationSnapshot } from "@/db/schema";
 import { brandActivity, type BrandActivity } from "@/lib/deploy-info";
+import { ensureFreshData } from "@/lib/sync/fresh";
 
 export type BrandSummary = Brand & {
   stage: PipelineStage;
@@ -53,6 +54,7 @@ export type BrandFilters = {
 const PRIORITY_RANK = { high: 0, medium: 1, low: 2 } as const;
 
 export async function listBrands(filters: BrandFilters = {}): Promise<BrandSummary[]> {
+  await ensureFreshData();
   const db = await getDb();
   const rows = await db.query.brands.findMany({
     with: { stage: true, region: true, owner: true, phases: true, checklist: true, blockers: true, snapshots: true },
@@ -103,6 +105,7 @@ export async function listBrands(filters: BrandFilters = {}): Promise<BrandSumma
 }
 
 export async function getBrandBySlug(slug: string) {
+  await ensureFreshData();
   const db = await getDb();
   return db.query.brands.findFirst({
     where: eq(brands.slug, slug),
@@ -134,6 +137,7 @@ export async function getMissingChecklistItems(brandId: string) {
 }
 
 export async function getOpenBlockers() {
+  await ensureFreshData();
   const db = await getDb();
   return db.query.blockers.findMany({
     where: and(isNull(blockers.resolvedAt)),

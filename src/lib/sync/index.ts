@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { appState } from "@/db/schema";
 import { runSync, type SyncConfig, type SyncSummary } from "./engine";
-import { fetchRepoDocs, listGithubRepos, listRecentReposViaVercel, listVercelProjects, type GithubRepo } from "./sources";
+import { fetchRepoDocs, fetchSiteText, listAllReposViaVercel, listGithubRepos, listRecentReposViaVercel, listVercelProjects, type GithubRepo } from "./sources";
 
 const STATE_KEY = "sync";
 /** Pages trigger a background sync when the last one is older than this. */
@@ -32,8 +32,9 @@ const REPO_CACHE_KEY = "github_repos";
 const FULL_REPO_LIST_INTERVAL_MS = 30 * 60 * 1000;
 
 /**
- * Full GitHub listing, cached so anonymous requests stay well under GitHub's
- * 60-per-hour limit. If GitHub refuses, the last good list is used instead.
+ * Full repo listing, cached for 30 minutes. With a GITHUB_TOKEN it comes from GitHub;
+ * otherwise from Vercel's GitHub connection, which also sees private repos. If the
+ * fetch fails, the last good list is used instead.
  */
 async function listGithubReposCached(owner: string, token?: string): Promise<GithubRepo[]> {
   const db = await getDb();
@@ -42,7 +43,8 @@ async function listGithubReposCached(owner: string, token?: string): Promise<Git
   const fresh = cached?.at && cached.owner === owner && Date.now() - Date.parse(cached.at) < FULL_REPO_LIST_INTERVAL_MS;
   if (fresh && cached?.repos) return cached.repos;
   try {
-    const repos = await listGithubRepos(owner, token);
+    const cfg = getSyncConfig();
+    const repos = token || !cfg.vercelToken ? await listGithubRepos(owner, token) : await listAllReposViaVercel(cfg.vercelToken, cfg.vercelTeamId);
     const value = { at: new Date().toISOString(), owner, repos };
     await db
       .insert(appState)
@@ -80,7 +82,7 @@ export async function syncNow(): Promise<SyncSummary> {
     const db = await getDb();
     let summary: SyncSummary;
     try {
-      summary = await runSync(db, getSyncConfig(), { listVercelProjects, listGithubRepos: listGithubReposCached, listRecentRepos: listRecentReposViaVercel, fetchRepoDocs });
+      summary = await runSync(db, getSyncConfig(), { listVercelProjects, listGithubRepos: listGithubReposCached, listRecentRepos: listRecentReposViaVercel, fetchRepoDocs, fetchSiteText });
     } catch (e) {
       summary = { at: new Date().toISOString(), ok: false, error: e instanceof Error ? e.message : String(e), warnings: [], added: [], linked: [], advanced: [], queued: 0, vercelProjects: 0, githubRepos: 0, durationMs: 0 };
     }
@@ -100,6 +102,8 @@ export async function syncNow(): Promise<SyncSummary> {
 /** Sync if configured and the last attempt is stale. Safe to call on every page view. */
 export async function maybeSync(): Promise<void> {
   if (!isSyncConfigured()) return;
+  // Never sync while Next is building: it would hit the live database and mark a run as done.
+  if (process.env.NEXT_PHASE === "phase-production-build") return;
   const state = await getSyncState();
   const last = state.lastAttemptAt ? Date.parse(state.lastAttemptAt) : 0;
   if (Date.now() - last < SYNC_INTERVAL_MS) return;
