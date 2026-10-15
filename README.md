@@ -27,7 +27,7 @@ The app is deployed from this repository to the Vercel project **build-tracker**
 
 Two one-time settings live in the Vercel project, not in this repo:
 
-1. **Database.** Project → *Storage* → *Create Database* → **Neon** → connect to build-tracker. This adds `DATABASE_URL`. Until it exists the app runs in **demo mode** (sample data, nothing saved). After adding it, *Deployments → Redeploy*. On first start the app creates its tables and loads the five starter brands.
+1. **Database.** Project → *Storage* → *Create Database* → **Neon** → connect to build-tracker. This adds `DATABASE_URL` (the app also accepts `POSTGRES_URL`). Until it exists the app runs in **demo mode** (sample data, nothing saved). After adding it, *Deployments → Redeploy*. On first start the app creates its tables and loads the five starter brands.
 2. **Team password.** Project → *Settings → Environment Variables* → `DASHBOARD_PASSWORD`. Change it any time, then redeploy. `SESSION_SECRET` keeps everyone signed in across password changes.
 
 If Vercel's own login screen appears before the app's, turn it off under *Settings → Deployment Protection → Vercel Authentication*; the app has its own password gate.

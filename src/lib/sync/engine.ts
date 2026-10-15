@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import type { Db } from "@/db";
 import * as schema from "@/db/schema";
 import { initializeBrandChildren } from "@/db/seed";
@@ -27,6 +27,8 @@ export type SyncDeps = {
 export type SyncSummary = {
   at: string;
   ok: boolean;
+  /** Another server instance was already syncing, so this run did nothing. */
+  skipped?: boolean;
   error?: string;
   warnings: string[];
   added: string[];
@@ -108,6 +110,21 @@ export async function runSync(db: Db, cfg: SyncConfig, deps: SyncDeps): Promise<
     candidates.push({ key: `github:${g.fullName}`, kind: "github", rawName: g.name, repo: g.fullName, repoUrl: g.htmlUrl, url: g.htmlUrl, github: g });
   }
 
+  // One sync at a time across all server instances; a failure rolls the whole run back.
+  await db.transaction(async (tx) => {
+    const res = (await tx.execute(sql`select pg_try_advisory_xact_lock(727102) as locked`)) as unknown as { rows: { locked: boolean }[] };
+    if (!res.rows[0]?.locked) {
+      summary.skipped = true;
+      return;
+    }
+    await applyCandidates(tx as unknown as Db, candidates, cfg, deps, summary);
+  });
+
+  summary.durationMs = Date.now() - started;
+  return summary;
+}
+
+async function applyCandidates(db: Db, candidates: Candidate[], cfg: SyncConfig, deps: SyncDeps, summary: SyncSummary) {
   /* ---- reference data ---- */
   const stages = await db.query.pipelineStages.findMany();
   const buildingStage = stages.find((s) => s.key === "building") ?? stages.filter((s) => !s.isTerminal).sort((a, b) => a.sortOrder - b.sortOrder)[0];
@@ -239,8 +256,6 @@ export async function runSync(db: Db, cfg: SyncConfig, deps: SyncDeps): Promise<
     else items.set(c.key, (await db.insert(schema.syncItems).values(itemValues).returning())[0]);
   }
 
-  summary.durationMs = Date.now() - started;
-  return summary;
 }
 
 async function upsertSnapshot(db: Db, brandId: string, kind: string, data: Record<string, unknown>) {

@@ -138,6 +138,12 @@ describe("runSync", () => {
     expect((await brandBy("Selvora"))?.stagingUrl).toBe("https://my-own-staging.example");
   });
 
+  it("survives two syncs started at the same moment", async () => {
+    const [a, b] = await Promise.all([runSync(db, cfg, deps), runSync(db, cfg, deps)]);
+    expect(a.ok && b.ok).toBe(true);
+    expect(await db.query.brands.findMany()).toHaveLength(11);
+  });
+
   it("reports a failure without touching data when every source fails", async () => {
     const s = await runSync(db, cfg, {
       ...deps,

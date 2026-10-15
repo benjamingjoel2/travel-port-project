@@ -3,6 +3,7 @@ import path from "node:path";
 import type { ExtractTablesWithRelations } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import * as schema from "./schema";
+import { databaseUrl } from "@/lib/env";
 import { seedDatabase } from "./seed";
 
 export type Db = PgDatabase<PgQueryResultHKT, typeof schema, ExtractTablesWithRelations<typeof schema>>;
@@ -20,7 +21,7 @@ const MIGRATIONS_FOLDER = path.join(process.cwd(), "drizzle");
 
 /** Where the data lives right now. Used for the demo-mode banner and setup hints. */
 export function getDbMode(): DbMode {
-  if (process.env.DATABASE_URL) return "postgres";
+  if (databaseUrl()) return "postgres";
   return process.env.VERCEL ? "demo" : "local";
 }
 
@@ -31,7 +32,7 @@ async function createHolder(): Promise<Holder> {
     const { Pool } = await import("pg");
     const { drizzle } = await import("drizzle-orm/node-postgres");
     const { migrate } = await import("drizzle-orm/node-postgres/migrator");
-    const url = process.env.DATABASE_URL!;
+    const url = databaseUrl()!;
     const ssl = /localhost|127\.0\.0\.1/.test(url) ? undefined : { rejectUnauthorized: false };
     const pool = new Pool({ connectionString: url, max: 5, ssl });
     const db = drizzle(pool, { schema }) as unknown as Db;

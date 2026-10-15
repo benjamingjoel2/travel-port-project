@@ -1,5 +1,6 @@
 // Edge- and Node-safe session helpers (no next/headers, no node: imports) so proxy.ts can use them.
 import { SignJWT, jwtVerify } from "jose";
+import { databaseUrl } from "@/lib/env";
 
 export const SESSION_COOKIE = "tp_session";
 export const SESSION_DAYS = 30;
@@ -16,7 +17,7 @@ export function isPasswordRequired(): boolean {
 
 /** A real database is attached but nobody set a password: refuse to serve data. */
 export function isPasswordMissing(): boolean {
-  return Boolean(process.env.DATABASE_URL) && !process.env.DASHBOARD_PASSWORD;
+  return Boolean(databaseUrl()) && !process.env.DASHBOARD_PASSWORD;
 }
 
 function secret(): Uint8Array {

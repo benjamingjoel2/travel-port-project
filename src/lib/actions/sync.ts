@@ -23,6 +23,7 @@ export async function runSyncNow(): Promise<Result> {
     await requireRole("editor");
     const s = await syncNow();
     revalidateAll();
+    if (s.skipped) return { ok: true, message: "A sync is already running. Refresh in a few seconds." };
     if (!s.ok) return { ok: false, error: s.error ?? "Sync failed." };
     const parts = [
       s.added.length && `added ${s.added.join(", ")}`,

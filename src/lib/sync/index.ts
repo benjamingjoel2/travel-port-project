@@ -56,7 +56,8 @@ export async function syncNow(): Promise<SyncSummary> {
     } catch (e) {
       summary = { at: new Date().toISOString(), ok: false, error: e instanceof Error ? e.message : String(e), warnings: [], added: [], linked: [], advanced: [], queued: 0, vercelProjects: 0, githubRepos: 0, durationMs: 0 };
     }
-    await saveState({ last: summary });
+    // A skipped run means another instance is syncing right now; keep its result.
+    if (!summary.skipped) await saveState({ last: summary });
     return summary;
   })().finally(() => {
     running = null;
