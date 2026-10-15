@@ -160,6 +160,23 @@ describe("runSync", () => {
     expect(fr?.region?.name).toBe("Europe");
   });
 
+  it("joins a repo-less Vercel site to its country's brand and takes the site's name", async () => {
+    const site = { ...vp("p_aq", "seventh-continent", null), stagingUrl: "https://seventh-continent.vercel.app" };
+    const s = await runSync(db, cfg, {
+      ...deps,
+      listVercelProjects: async () => ({ projects: [...VERCEL, site] }),
+      listRecentRepos: async () => [gh("antarctica")],
+      fetchSiteText: async (url) => (url.includes("seventh-continent") ? "Expeditions to Antarctica. ".repeat(6) : ""),
+    });
+    expect(s.ok).toBe(true);
+    const all = await db.query.brands.findMany();
+    expect(all.filter((b) => b.countryCode === "AQ")).toHaveLength(1);
+    const aq = all.find((b) => b.countryCode === "AQ")!;
+    expect(aq.name).toBe("Seventh Continent");
+    expect(aq.vercelProjectId).toBe("p_aq");
+    expect(aq.githubRepo).toBe("benjamingjoel2/antarctica");
+  });
+
   it("reports a failure without touching data when every source fails", async () => {
     const s = await runSync(db, cfg, {
       ...deps,
