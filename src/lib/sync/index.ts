@@ -7,7 +7,7 @@ import { fetchRepoDocs, listGithubRepos, listVercelProjects } from "./sources";
 
 const STATE_KEY = "sync";
 /** Pages trigger a background sync when the last one is older than this. */
-export const SYNC_INTERVAL_MS = 10 * 60 * 1000;
+export const SYNC_INTERVAL_MS = 60 * 1000;
 
 export function getSyncConfig(): SyncConfig {
   const env = process.env;
