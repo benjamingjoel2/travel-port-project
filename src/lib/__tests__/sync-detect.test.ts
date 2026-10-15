@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { detectCountryFromName, detectCountryFromText, humanize } from "@/lib/sync/detect";
+import { detectCountryFromName, detectCountryFromText, detectCountryInName, humanize } from "@/lib/sync/detect";
 import { regionForCountry } from "@/lib/sync/regions";
 
 describe("detectCountryFromName", () => {
@@ -15,6 +15,21 @@ describe("detectCountryFromName", () => {
     expect(detectCountryFromName("cenote-house")).toBeNull();
     expect(detectCountryFromName("Escale-Voyages")).toBeNull();
     expect(detectCountryFromName("localhost.")).toBeNull();
+  });
+});
+
+describe("detectCountryInName", () => {
+  it("finds a single country inside a longer name", () => {
+    expect(detectCountryInName("sabbatical-portugal")).toBe("PT");
+    expect(detectCountryInName("visit-south-africa")).toBe("ZA");
+    expect(detectCountryInName("new-zealand-trips")).toBe("NZ");
+    expect(detectCountryInName("papua-new-guinea-dive")).toBe("PG");
+  });
+  it("stays undecided for zero or several countries", () => {
+    expect(detectCountryInName("kenya-tanzania-safaris")).toBeNull();
+    expect(detectCountryInName("safari-golf-tour")).toBeNull();
+    expect(detectCountryInName("extrafari")).toBeNull();
+    expect(detectCountryInName("hyperporter")).toBeNull();
   });
 });
 

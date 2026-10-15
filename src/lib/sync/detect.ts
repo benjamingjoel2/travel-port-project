@@ -70,6 +70,25 @@ export function detectCountryFromName(name: string | null | undefined): string |
 }
 
 /**
+ * A country named inside a repo or project name ("sabbatical-portugal", "visit-south-africa").
+ * Only answers when exactly one country appears, so "kenya-tanzania-safaris" stays undecided.
+ */
+export function detectCountryInName(name: string | null | undefined): string | null {
+  if (!name) return null;
+  let t = ` ${normalize(name)} `;
+  const found = new Set<string>();
+  for (const [country, code] of NAME_TO_CODE) {
+    const needle = ` ${country} `;
+    if (t.includes(needle)) {
+      found.add(code);
+      // Blank it out so "guinea" isn't also found inside "papua new guinea".
+      t = t.split(needle).join("  ");
+    }
+  }
+  return found.size === 1 ? [...found][0] : null;
+}
+
+/**
  * Loose: count country mentions in free text (README, CLAUDE.md). Returns a code only when
  * one country clearly dominates (≥5 mentions and ≥3× the runner-up), so multi-country
  * brands stay unassigned instead of being guessed.
