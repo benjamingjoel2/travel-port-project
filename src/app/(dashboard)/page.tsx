@@ -5,7 +5,7 @@ import { getStages, getRegions } from "@/lib/data/reference";
 import { GOAL_BRAND_COUNT, WAITING_ON_LABELS } from "@/lib/constants";
 import { daysUntil, formatDate, timeAgo } from "@/lib/utils";
 import { PageHeader } from "@/components/page-header";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { StageBadge } from "@/components/stage-badge";
 import { BrandLogo } from "@/components/brand-logo";
@@ -47,6 +47,10 @@ export default async function OverviewPage() {
       <Card className="mb-6">
         <CardHeader>
           <CardTitle>World map</CardTitle>
+          <CardDescription>
+            {Object.keys(shading).length} countries with a brand
+            {brands.some((b) => !b.countryCode) && ` · ${brands.filter((b) => !b.countryCode).length} brand(s) have no country set`}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <WorldMap shading={shading} stages={stages.filter((s) => !s.isTerminal)} />

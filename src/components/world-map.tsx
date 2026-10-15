@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ComposableMap, Geographies, Geography } from "react-simple-maps";
+import { geoCentroid } from "d3-geo";
+import { ComposableMap, Geographies, Geography, Marker } from "react-simple-maps";
 import type { CountryShade } from "@/lib/geo";
 import type { PipelineStage } from "@/db/schema";
 import world from "@/data/world-110m.json";
@@ -10,34 +11,69 @@ import world from "@/data/world-110m.json";
 // Bundled (about 100 KB) so the map paints with the page instead of after a fetch.
 const GEO = world as unknown as Parameters<typeof Geographies>[0]["geography"];
 
+type Hover = { x: number; y: number; name: string; shade?: CountryShade };
+
 export function WorldMap({ shading, stages }: { shading: Record<string, CountryShade>; stages: Pick<PipelineStage, "id" | "name" | "color">[] }) {
   const router = useRouter();
-  const [hover, setHover] = useState<{ x: number; y: number; name: string; shade?: CountryShade } | null>(null);
+  const [hover, setHover] = useState<Hover | null>(null);
+
+  const open = (name: string, shade?: CountryShade) => {
+    if (!shade) return;
+    if (shade.brands.length === 1) router.push(`/brands/${shade.brands[0].slug}`);
+    else router.push(`/brands?q=${encodeURIComponent(name)}`);
+  };
 
   return (
     <div className="relative">
-      <ComposableMap projection="geoNaturalEarth1" projectionConfig={{ scale: 150, center: [10, 5] }} width={800} height={380} className="w-full h-auto">
+      <ComposableMap projection="geoNaturalEarth1" projectionConfig={{ scale: 150, center: [10, 5] }} width={800} height={380} className="h-auto w-full">
         <Geographies geography={GEO}>
-          {({ geographies }) =>
-            geographies.map((geo) => {
-              const shade = shading[String(geo.id)];
-              const name = (geo.properties as { name?: string })?.name ?? "";
-              return (
-                <Geography
-                  key={geo.rsmKey}
-                  geography={geo}
-                  onMouseMove={(e) => setHover({ x: e.clientX, y: e.clientY, name, shade })}
-                  onMouseLeave={() => setHover(null)}
-                  onClick={() => {
-                    if (shade?.brands.length === 1) router.push(`/brands/${shade.brands[0].slug}`);
-                    else if (shade) router.push(`/brands?q=${encodeURIComponent(name)}`);
-                  }}
-                  className={shade ? "cursor-pointer outline-none transition-opacity hover:opacity-80" : "outline-none"}
-                  style={{ fill: shade ? shade.color : "var(--muted)", stroke: "var(--background)", strokeWidth: 0.5 }}
-                />
-              );
-            })
-          }
+          {({ geographies }) => {
+            const withBrands = geographies.filter((g) => shading[String(g.id)]);
+            return (
+              <>
+                {geographies.map((geo) => {
+                  const shade = shading[String(geo.id)];
+                  const name = (geo.properties as { name?: string })?.name ?? "";
+                  return (
+                    <Geography
+                      key={geo.rsmKey}
+                      geography={geo}
+                      onMouseMove={(e) => setHover({ x: e.clientX, y: e.clientY, name, shade })}
+                      onMouseLeave={() => setHover(null)}
+                      onClick={() => open(name, shade)}
+                      className={shade ? "cursor-pointer outline-none transition-opacity hover:opacity-80" : "outline-none"}
+                      style={{ fill: shade ? shade.color : "var(--muted)", stroke: "var(--background)", strokeWidth: 0.5 }}
+                    />
+                  );
+                })}
+                {/* A marker on every brand country so small ones (Rwanda, Bhutan, Benin) can't vanish. */}
+                {withBrands.map((geo) => {
+                  const shade = shading[String(geo.id)];
+                  const name = (geo.properties as { name?: string })?.name ?? "";
+                  const [lon, lat] = geoCentroid(geo);
+                  const count = shade.brands.length;
+                  return (
+                    <Marker
+                      key={`m-${geo.rsmKey}`}
+                      coordinates={[lon, lat]}
+                      onMouseMove={(e) => setHover({ x: e.clientX, y: e.clientY, name, shade })}
+                      onMouseLeave={() => setHover(null)}
+                      onClick={() => open(name, shade)}
+                      className="cursor-pointer"
+                      data-country={name}
+                    >
+                      <circle r={count > 1 ? 7 : 5} fill={shade.color} stroke="var(--background)" strokeWidth={1.5} />
+                      {count > 1 && (
+                        <text textAnchor="middle" y={3} fontSize={8} fontWeight={600} fill="var(--background)" style={{ pointerEvents: "none" }}>
+                          {count}
+                        </text>
+                      )}
+                    </Marker>
+                  );
+                })}
+              </>
+            );
+          }}
         </Geographies>
       </ComposableMap>
 
