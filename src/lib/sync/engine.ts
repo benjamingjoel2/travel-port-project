@@ -21,6 +21,8 @@ export type SyncConfig = {
 export type SyncDeps = {
   listVercelProjects: (token: string, teamId?: string) => Promise<{ projects: VercelProject[] }>;
   listGithubRepos: (owner: string, token?: string) => Promise<GithubRepo[]>;
+  /** Recently updated repos via Vercel's GitHub connection (optional, no rate limit). */
+  listRecentRepos?: (token: string, teamId?: string) => Promise<GithubRepo[]>;
   fetchRepoDocs: (fullName: string, token?: string) => Promise<string>;
 };
 
@@ -79,13 +81,30 @@ export async function runSync(db: Db, cfg: SyncConfig, deps: SyncDeps): Promise<
       summary.warnings.push(`Vercel: ${e instanceof Error ? e.message : String(e)}`);
     }
   }
-  const owner = cfg.githubOwner || vercel.find((p) => p.repo)?.repo?.split("/")[0];
+  // Recent repos through Vercel first: always available, and that's where new projects are.
+  let recent: GithubRepo[] = [];
+  if (cfg.vercelToken && deps.listRecentRepos) {
+    try {
+      recent = await deps.listRecentRepos(cfg.vercelToken, cfg.vercelTeamId);
+    } catch (e) {
+      summary.warnings.push(`Recent repos via Vercel: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+  const owner = cfg.githubOwner || vercel.find((p) => p.repo)?.repo?.split("/")[0] || recent[0]?.fullName.split("/")[0];
   if (owner) {
     try {
       github = await deps.listGithubRepos(owner, cfg.githubToken);
     } catch (e) {
       summary.warnings.push(`GitHub: ${e instanceof Error ? e.message : String(e)}`);
     }
+  }
+  // Merge, keeping the full list's entry when a repo is in both; only this account's repos.
+  const seen = new Set(github.map((g) => g.fullName));
+  for (const r of recent) {
+    if (seen.has(r.fullName)) continue;
+    if (owner && !r.fullName.startsWith(`${owner.toLowerCase()}/`)) continue;
+    github.push(r);
+    seen.add(r.fullName);
   }
   summary.vercelProjects = vercel.length;
   summary.githubRepos = github.length;
