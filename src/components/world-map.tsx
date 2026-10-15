@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { geoCentroid } from "d3-geo";
-import { ComposableMap, Geographies, Geography, Marker } from "react-simple-maps";
+import { ComposableMap, Geographies, Geography } from "react-simple-maps";
 import type { CountryShade } from "@/lib/geo";
 import type { PipelineStage } from "@/db/schema";
 import world from "@/data/world-110m.json";
@@ -28,7 +27,6 @@ export function WorldMap({ shading, stages }: { shading: Record<string, CountryS
       <ComposableMap projection="geoNaturalEarth1" projectionConfig={{ scale: 150, center: [10, 5] }} width={800} height={380} className="h-auto w-full">
         <Geographies geography={GEO}>
           {({ geographies }) => {
-            const withBrands = geographies.filter((g) => shading[String(g.id)]);
             return (
               <>
                 {geographies.map((geo) => {
@@ -44,31 +42,6 @@ export function WorldMap({ shading, stages }: { shading: Record<string, CountryS
                       className={shade ? "cursor-pointer outline-none transition-opacity hover:opacity-80" : "outline-none"}
                       style={{ fill: shade ? shade.color : "var(--muted)", stroke: "var(--background)", strokeWidth: 0.5 }}
                     />
-                  );
-                })}
-                {/* A marker on every brand country so small ones (Rwanda, Bhutan, Benin) can't vanish. */}
-                {withBrands.map((geo) => {
-                  const shade = shading[String(geo.id)];
-                  const name = (geo.properties as { name?: string })?.name ?? "";
-                  const [lon, lat] = geoCentroid(geo);
-                  const count = shade.brands.length;
-                  return (
-                    <Marker
-                      key={`m-${geo.rsmKey}`}
-                      coordinates={[lon, lat]}
-                      onMouseMove={(e) => setHover({ x: e.clientX, y: e.clientY, name, shade })}
-                      onMouseLeave={() => setHover(null)}
-                      onClick={() => open(name, shade)}
-                      className="cursor-pointer"
-                      data-country={name}
-                    >
-                      <circle r={count > 1 ? 7 : 5} fill={shade.color} stroke="var(--background)" strokeWidth={1.5} />
-                      {count > 1 && (
-                        <text textAnchor="middle" y={3} fontSize={8} fontWeight={600} fill="var(--background)" style={{ pointerEvents: "none" }}>
-                          {count}
-                        </text>
-                      )}
-                    </Marker>
                   );
                 })}
               </>
