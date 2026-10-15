@@ -33,7 +33,7 @@ export function SyncPanel({ configured, sources, last, pending, ignored, canEdit
             <CardTitle>Auto-sync with Vercel and GitHub</CardTitle>
             <CardDescription className="mt-1">
               {configured
-                ? "New projects are picked up automatically every 10 minutes while someone is using the tracker, and once a night."
+                ? "New projects are picked up automatically every minute while someone has the tracker open, and once a night."
                 : "Not connected yet. See the README for the two settings it needs."}
             </CardDescription>
           </div>

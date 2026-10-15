@@ -1,6 +1,7 @@
 import { after } from "next/server";
 import { getDbMode } from "@/db";
-import { maybeSync } from "@/lib/sync";
+import { maybeSync, SYNC_INTERVAL_MS } from "@/lib/sync";
+import { AutoRefresh } from "@/components/auto-refresh";
 import { isPasswordRequired, requireActor } from "@/lib/auth";
 import { AppSidebar } from "@/components/app-sidebar";
 import { MemberMenu } from "@/components/member-menu";
@@ -13,6 +14,7 @@ export default async function DashboardLayout({ children }: LayoutProps<"/">) {
 
   return (
     <div className="min-h-screen">
+      <AutoRefresh intervalMs={SYNC_INTERVAL_MS} />
       <AppSidebar footer={<MemberMenu actor={actor} passwordRequired={isPasswordRequired()} />} />
       <div className="md:pl-56">
         {mode === "demo" && (

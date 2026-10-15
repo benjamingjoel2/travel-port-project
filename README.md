@@ -40,7 +40,7 @@ The tracker finds brands on its own. Every Vercel project on the team and every 
 - **New and the country is clear?** It's added as a brand at Building. The country comes from the repo or project name (`costa-rica`, `bhutan`), or from the repo's README and CLAUDE.md when one country clearly dominates (Escale Voyages → Benin).
 - **Country unclear?** It waits in *Settings → Auto-sync → Needs a country*, where you pick a country or ignore it.
 
-It runs in the background whenever someone opens the tracker (at most every 10 minutes), nightly via Vercel Cron, and on demand with *Sync now*.
+It runs in the background every minute while someone has the tracker open (open pages also refresh themselves), nightly via Vercel Cron, and on demand with *Sync now*. On Vercel's Hobby plan cron can only run once a day, so with nobody on the site new projects appear by the next morning at the latest.
 
 Settings it reads (Vercel project → Settings → Environment Variables):
 
