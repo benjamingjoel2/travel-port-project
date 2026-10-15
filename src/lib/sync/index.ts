@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { appState } from "@/db/schema";
 import { runSync, type SyncConfig, type SyncSummary } from "./engine";
-import { fetchRepoDocs, listGithubRepos, listVercelProjects } from "./sources";
+import { fetchRepoDocs, listGithubRepos, listRecentReposViaVercel, listVercelProjects, type GithubRepo } from "./sources";
 
 const STATE_KEY = "sync";
 /** Pages trigger a background sync when the last one is older than this. */
@@ -26,6 +26,34 @@ export function isSyncConfigured(cfg = getSyncConfig()) {
 }
 
 type StoredState = { lastAttemptAt?: string; last?: SyncSummary };
+
+const REPO_CACHE_KEY = "github_repos";
+/** The full GitHub repo list is fetched at most this often; recent repos come from Vercel every run. */
+const FULL_REPO_LIST_INTERVAL_MS = 30 * 60 * 1000;
+
+/**
+ * Full GitHub listing, cached so anonymous requests stay well under GitHub's
+ * 60-per-hour limit. If GitHub refuses, the last good list is used instead.
+ */
+async function listGithubReposCached(owner: string, token?: string): Promise<GithubRepo[]> {
+  const db = await getDb();
+  const row = await db.query.appState.findFirst({ where: eq(appState.key, REPO_CACHE_KEY) });
+  const cached = row?.value as { at?: string; owner?: string; repos?: GithubRepo[] } | undefined;
+  const fresh = cached?.at && cached.owner === owner && Date.now() - Date.parse(cached.at) < FULL_REPO_LIST_INTERVAL_MS;
+  if (fresh && cached?.repos) return cached.repos;
+  try {
+    const repos = await listGithubRepos(owner, token);
+    const value = { at: new Date().toISOString(), owner, repos };
+    await db
+      .insert(appState)
+      .values({ key: REPO_CACHE_KEY, value, updatedAt: new Date() })
+      .onConflictDoUpdate({ target: appState.key, set: { value, updatedAt: new Date() } });
+    return repos;
+  } catch (e) {
+    if (cached?.repos && cached.owner === owner) return cached.repos;
+    throw e;
+  }
+}
 
 export async function getSyncState(): Promise<StoredState> {
   const db = await getDb();
@@ -52,10 +80,14 @@ export async function syncNow(): Promise<SyncSummary> {
     const db = await getDb();
     let summary: SyncSummary;
     try {
-      summary = await runSync(db, getSyncConfig(), { listVercelProjects, listGithubRepos, fetchRepoDocs });
+      summary = await runSync(db, getSyncConfig(), { listVercelProjects, listGithubRepos: listGithubReposCached, listRecentRepos: listRecentReposViaVercel, fetchRepoDocs });
     } catch (e) {
       summary = { at: new Date().toISOString(), ok: false, error: e instanceof Error ? e.message : String(e), warnings: [], added: [], linked: [], advanced: [], queued: 0, vercelProjects: 0, githubRepos: 0, durationMs: 0 };
     }
+    // One line per run so Vercel's logs show what auto-sync is doing.
+    console.log(
+      `[auto-sync] ${summary.skipped ? "skipped (another run in progress)" : summary.ok ? "ok" : "FAILED"} vercel=${summary.vercelProjects} repos=${summary.githubRepos} added=[${summary.added.join(", ")}] linked=[${summary.linked.join(", ")}] queued=${summary.queued}${summary.warnings.length ? ` warnings=${summary.warnings.join(" | ")}` : ""}${summary.error ? ` error=${summary.error}` : ""} ${summary.durationMs}ms`,
+    );
     // A skipped run means another instance is syncing right now; keep its result.
     if (!summary.skipped) await saveState({ last: summary });
     return summary;

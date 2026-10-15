@@ -124,6 +124,31 @@ export async function listGithubRepos(owner: string, token?: string): Promise<Gi
   return out;
 }
 
+/**
+ * The most recently updated repos (about 8), read through Vercel's own GitHub
+ * connection. No GitHub token or rate limit involved, and new projects are always
+ * among the most recent, so this is what makes new repos show up within a minute.
+ */
+export async function listRecentReposViaVercel(token: string, teamId: string | undefined): Promise<GithubRepo[]> {
+  const qs = teamId ? `&teamId=${encodeURIComponent(teamId)}` : "";
+  const data = await fetchJson<{ repos?: { url: string; name: string; namespace?: string; owner?: { name?: string }; private?: boolean; updatedAt?: number; provider?: string }[] }>(
+    `https://api.vercel.com/v1/integrations/search-repo?provider=github${qs}`,
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
+  return (data.repos ?? [])
+    .filter((r) => (r.provider ?? "github") === "github")
+    .map((r) => {
+      const owner = r.namespace ?? r.owner?.name ?? "";
+      return {
+        fullName: `${owner}/${r.name}`.toLowerCase(),
+        name: r.name,
+        htmlUrl: r.url,
+        pushedAt: r.updatedAt ? new Date(r.updatedAt).toISOString() : null,
+        private: Boolean(r.private),
+      };
+    });
+}
+
 /** README.md + CLAUDE.md text for country detection. Empty string when unreachable. */
 export async function fetchRepoDocs(fullName: string, token?: string): Promise<string> {
   const headers: Record<string, string> = { "User-Agent": "build-tracker" };

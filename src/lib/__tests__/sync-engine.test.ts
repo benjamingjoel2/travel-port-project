@@ -144,6 +144,22 @@ describe("runSync", () => {
     expect(await db.query.brands.findMany()).toHaveLength(12);
   });
 
+  it("finds brand-new repos through Vercel even when GitHub refuses", async () => {
+    const s = await runSync(db, cfg, {
+      ...deps,
+      listGithubRepos: async () => {
+        throw new Error("api.github.com answered 403");
+      },
+      listRecentRepos: async () => [gh("france"), gh("antarctica"), gh("someone-else-repo")].map((r, i) => (i === 2 ? { ...r, fullName: "other/someone-else-repo" } : r)),
+    });
+    expect(s.ok).toBe(true);
+    expect(s.warnings.join()).toMatch(/403/);
+    expect(s.added.sort()).toEqual(["Antarctica", "France"]);
+    const fr = await brandBy("France");
+    expect(fr?.countryCode).toBe("FR");
+    expect(fr?.region?.name).toBe("Europe");
+  });
+
   it("reports a failure without touching data when every source fails", async () => {
     const s = await runSync(db, cfg, {
       ...deps,
@@ -156,6 +172,6 @@ describe("runSync", () => {
     });
     expect(s.ok).toBe(false);
     expect(s.error).toMatch(/401/);
-    expect(await db.query.brands.findMany()).toHaveLength(12);
+    expect(await db.query.brands.findMany()).toHaveLength(14);
   });
 });
