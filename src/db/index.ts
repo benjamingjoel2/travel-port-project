@@ -3,7 +3,7 @@ import path from "node:path";
 import type { ExtractTablesWithRelations } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import * as schema from "./schema";
-import { databaseUrl } from "@/lib/env";
+import { databaseUrl, directDatabaseUrl } from "@/lib/env";
 import { seedDatabase } from "./seed";
 
 export type Db = PgDatabase<PgQueryResultHKT, typeof schema, ExtractTablesWithRelations<typeof schema>>;
@@ -38,9 +38,12 @@ async function createHolder(): Promise<Holder> {
     const db = drizzle(pool, { schema }) as unknown as Db;
 
     const ready = (async () => {
-      // One connection holds an advisory lock so several cold-starting instances
-      // can't run the migrations at the same time.
-      const client = await pool.connect();
+      // Migrations use a direct connection: one session holds an advisory lock so several
+      // cold-starting instances can't run them at once (pooled connections can't hold it).
+      const { Client } = await import("pg");
+      const directUrl = directDatabaseUrl()!;
+      const client = new Client({ connectionString: directUrl, ssl: /localhost|127\.0\.0\.1/.test(directUrl) ? undefined : { rejectUnauthorized: false } });
+      await client.connect();
       try {
         await client.query("select pg_advisory_lock(727101)");
         const migrator = drizzle(client, { schema });
@@ -48,7 +51,7 @@ async function createHolder(): Promise<Holder> {
         await seedDatabase(migrator as unknown as Db);
       } finally {
         await client.query("select pg_advisory_unlock(727101)").catch(() => {});
-        client.release();
+        await client.end().catch(() => {});
       }
     })();
 
