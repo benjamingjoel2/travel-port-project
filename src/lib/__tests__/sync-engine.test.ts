@@ -40,7 +40,7 @@ const VERCEL = [
   vp("p_new", "new", "new", "persocal.com"),
   vp("p_lh", "localhost", "localhost."),
 ];
-const GITHUB = ["travel-port-project", "bhutan", "mexico", "costa-rica", "Escale-Voyages", "kenya", "south-africa", "guatemala", "tanzania", "indonesia", "uganda", "rwanda", "new", "extrafari", "maxxing", "localhost."].map(gh);
+const GITHUB = ["sabbatical-portugal", "travel-port-project", "bhutan", "mexico", "costa-rica", "Escale-Voyages", "kenya", "south-africa", "guatemala", "tanzania", "indonesia", "uganda", "rwanda", "new", "extrafari", "maxxing", "localhost."].map(gh);
 const DOCS: Record<string, string> = {
   "benjamingjoel2/escale-voyages": "Escale Voyages, premium tour agency in Cotonou covering the whole of Benin Republic. ".repeat(4) + "Bénin Bénin. Near Nigeria and Togo.",
   "benjamingjoel2/extrafari": "Private safaris across Kenya, Tanzania, Uganda, Rwanda and Zimbabwe.",
@@ -72,12 +72,12 @@ describe("runSync", () => {
   it("adds new brands, links the seeded ones and queues the rest", async () => {
     const s = await runSync(db, cfg, deps);
     expect(s.ok).toBe(true);
-    expect(s.added.sort()).toEqual(["Cape Compass", "Dzong House", "Escale Voyages", "Rwanda", "Selvora", "Uganda"]);
+    expect(s.added.sort()).toEqual(["Cape Compass", "Dzong House", "Escale Voyages", "Rwanda", "Sabbatical Portugal", "Selvora", "Uganda"]);
     expect(s.linked.sort()).toEqual(["Antigua & Beyond", "Cenote House", "Nusa & Co.", "Safari Njema", "Uhuru Journeys"]);
     expect(s.advanced.sort()).toEqual(["Antigua & Beyond", "Cenote House", "Nusa & Co.", "Safari Njema", "Uhuru Journeys"]);
 
     const all = await db.query.brands.findMany();
-    expect(all).toHaveLength(11);
+    expect(all).toHaveLength(12);
     expect(all.some((b) => b.name === "Build Tracker" || b.repoUrl?.includes("travel-port-project"))).toBe(false);
 
     const queue = await db.query.syncItems.findMany({ where: eq(schema.syncItems.status, "pending") });
@@ -114,7 +114,7 @@ describe("runSync", () => {
     expect(s.added).toEqual([]);
     expect(s.linked).toEqual([]);
     expect(s.advanced).toEqual([]);
-    expect(await db.query.brands.findMany()).toHaveLength(11);
+    expect(await db.query.brands.findMany()).toHaveLength(12);
     expect(docFetches).toBe(before);
   });
 
@@ -141,7 +141,7 @@ describe("runSync", () => {
   it("survives two syncs started at the same moment", async () => {
     const [a, b] = await Promise.all([runSync(db, cfg, deps), runSync(db, cfg, deps)]);
     expect(a.ok && b.ok).toBe(true);
-    expect(await db.query.brands.findMany()).toHaveLength(11);
+    expect(await db.query.brands.findMany()).toHaveLength(12);
   });
 
   it("reports a failure without touching data when every source fails", async () => {
@@ -156,6 +156,6 @@ describe("runSync", () => {
     });
     expect(s.ok).toBe(false);
     expect(s.error).toMatch(/401/);
-    expect(await db.query.brands.findMany()).toHaveLength(11);
+    expect(await db.query.brands.findMany()).toHaveLength(12);
   });
 });

@@ -4,7 +4,7 @@ import * as schema from "@/db/schema";
 import { initializeBrandChildren } from "@/db/seed";
 import { countryByCode } from "@/lib/countries";
 import { slugify } from "@/lib/utils";
-import { detectCountryFromName, detectCountryFromText, humanize } from "./detect";
+import { detectCountryFromName, detectCountryFromText, detectCountryInName, humanize } from "./detect";
 import { regionForCountry } from "./regions";
 import type { GithubRepo, VercelProject } from "./sources";
 
@@ -175,7 +175,13 @@ async function applyCandidates(db: Db, candidates: Candidate[], cfg: SyncConfig,
       undefined;
 
     // 2. Work out the country (cheap checks first, README last and only once per project).
-    let country = detectCountryFromName(repoName(c.repo)) ?? detectCountryFromName(c.rawName) ?? existingItem?.detectedCountryCode ?? null;
+    let country =
+      detectCountryFromName(repoName(c.repo)) ??
+      detectCountryFromName(c.rawName) ??
+      detectCountryInName(repoName(c.repo)) ??
+      detectCountryInName(c.rawName) ??
+      existingItem?.detectedCountryCode ??
+      null;
     if (!country && !brand && !existingItem && c.repo) {
       country = detectCountryFromText(await deps.fetchRepoDocs(c.repo, cfg.githubToken));
     }
