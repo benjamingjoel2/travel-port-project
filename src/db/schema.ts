@@ -209,6 +209,11 @@ export const notes = pgTable(
       .references(() => brands.id, { onDelete: "cascade" }),
     authorId: uuid("author_id").references(() => teamMembers.id, { onDelete: "set null" }),
     body: text("body").notNull(),
+    /** Set when the text is changed after posting. */
+    editedAt: timestamp("edited_at", { withTimezone: true }),
+    /** Comments are open until someone marks them done. */
+    doneAt: timestamp("done_at", { withTimezone: true }),
+    doneById: uuid("done_by_id").references(() => teamMembers.id, { onDelete: "set null" }),
     ...timestamps,
   },
   (t) => [index("notes_brand_idx").on(t.brandId)],
@@ -324,6 +329,7 @@ export const promptsRelations = relations(prompts, ({ one }) => ({
 export const notesRelations = relations(notes, ({ one }) => ({
   brand: one(brands, { fields: [notes.brandId], references: [brands.id] }),
   author: one(teamMembers, { fields: [notes.authorId], references: [teamMembers.id] }),
+  doneBy: one(teamMembers, { fields: [notes.doneById], references: [teamMembers.id] }),
 }));
 export const blockersRelations = relations(blockers, ({ one }) => ({
   brand: one(brands, { fields: [blockers.brandId], references: [brands.id] }),

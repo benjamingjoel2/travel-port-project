@@ -19,7 +19,13 @@ function describe(entry: ActivityEntry): string {
     case "checklist_unticked":
       return `unticked "${d.label}"`;
     case "note_added":
-      return "added a note";
+      return d.preview ? `commented: "${d.preview}"` : "added a comment";
+    case "note_edited":
+      return "edited a comment";
+    case "note_done":
+      return d.preview ? `marked a comment done: "${d.preview}"` : "marked a comment done";
+    case "note_reopened":
+      return "reopened a comment";
     case "blocker_opened":
       return `opened a blocker: ${d.description ?? ""}`;
     case "blocker_resolved":
