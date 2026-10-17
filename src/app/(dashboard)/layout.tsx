@@ -4,15 +4,18 @@ import { AutoRefresh } from "@/components/auto-refresh";
 import { requireActor } from "@/lib/auth";
 import { AppSidebar } from "@/components/app-sidebar";
 import { MemberMenu } from "@/components/member-menu";
+import { NotificationBell } from "@/components/notification-bell";
+import { getNotifications } from "@/lib/data/notifications";
 
 export default async function DashboardLayout({ children }: LayoutProps<"/">) {
   const actor = await requireActor();
   const mode = getDbMode();
+  const notifications = await getNotifications(actor);
 
   return (
     <div className="min-h-screen">
       <AutoRefresh intervalMs={SYNC_INTERVAL_MS} />
-      <AppSidebar footer={<MemberMenu actor={actor} />} />
+      <AppSidebar footer={<MemberMenu actor={actor} />} bell={<NotificationBell items={notifications.items} unread={notifications.unread} seenAt={notifications.seenAt} />} />
       <div className="md:pl-56">
         {mode === "demo" && (
           <div className="border-b border-warning/40 bg-warning/15 px-4 py-2 text-center text-xs">
