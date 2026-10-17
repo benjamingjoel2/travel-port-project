@@ -33,8 +33,12 @@ function href(url: string | null | undefined) {
   return /^https?:\/\//i.test(url) ? url : `https://${url}`;
 }
 
-export default async function BrandDetailPage({ params }: PageProps<"/brands/[slug]">) {
+const TABS = ["build", "checklist", "prompt", "notes", "activity", "about"];
+
+export default async function BrandDetailPage({ params, searchParams }: PageProps<"/brands/[slug]">) {
   const { slug } = await params;
+  const { tab } = await searchParams;
+  const initialTab = typeof tab === "string" && TABS.includes(tab) ? tab : "build";
   const [brand, stages, actor] = await Promise.all([getBrandBySlug(slug), getStages(), getActor()]);
   if (!brand) notFound();
   const editable = actor ? canEdit(actor.role) : false;
@@ -42,6 +46,7 @@ export default async function BrandDetailPage({ params }: PageProps<"/brands/[sl
   const checklistDone = brand.checklist.filter((c) => c.done).length;
   const missingRequired = brand.checklist.filter((c) => c.required && !c.done);
   const openBlockers = brand.blockers.filter((b) => !b.resolvedAt);
+  const openComments = brand.notes.filter((n) => !n.doneAt).length;
 
   const links = [
     { label: "Repo", url: href(brand.repoUrl), icon: GitBranchIcon },
@@ -125,13 +130,15 @@ export default async function BrandDetailPage({ params }: PageProps<"/brands/[sl
         </Card>
       </div>
 
-      <Tabs defaultValue="build">
+      <Tabs defaultValue={initialTab}>
         <TabsList>
           <TabsTrigger value="build">Build</TabsTrigger>
           <TabsTrigger value="checklist">Checklist</TabsTrigger>
           <TabsTrigger value="prompt">Prompt</TabsTrigger>
           <TabsTrigger value="notes">
-            Notes &amp; blockers{openBlockers.length > 0 && <span className="ml-1 size-1.5 rounded-full bg-destructive" />}
+            Comments &amp; blockers
+            {openComments > 0 && <span className="ml-1 rounded-full bg-primary px-1.5 text-[10px] leading-4 text-primary-foreground tabular-nums">{openComments}</span>}
+            {openBlockers.length > 0 && <span className="ml-1 size-1.5 rounded-full bg-destructive" />}
           </TabsTrigger>
           <TabsTrigger value="activity">Activity</TabsTrigger>
           <TabsTrigger value="about">About</TabsTrigger>
@@ -175,19 +182,20 @@ export default async function BrandDetailPage({ params }: PageProps<"/brands/[sl
           <div className="grid gap-6 lg:grid-cols-2">
             <Card>
               <CardHeader>
+                <CardTitle>Comments</CardTitle>
+                <CardDescription>Leave notes for each other. Mark a comment done once it&apos;s handled.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <NotesPanel brandId={brand.id} notes={brand.notes} editable={editable} actorId={actor?.id} isOwner={actor?.role === "owner"} />
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
                 <CardTitle>Blockers</CardTitle>
                 <CardDescription>Open blockers show as a red marker on the board and on the Overview.</CardDescription>
               </CardHeader>
               <CardContent>
                 <BlockersPanel brandId={brand.id} blockers={brand.blockers} editable={editable} />
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>Notes</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <NotesPanel brandId={brand.id} notes={brand.notes} editable={editable} actorId={actor?.id} isOwner={actor?.role === "owner"} />
               </CardContent>
             </Card>
           </div>

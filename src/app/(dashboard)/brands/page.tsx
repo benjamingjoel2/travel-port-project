@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowDownIcon, ArrowUpIcon, PlusIcon } from "lucide-react";
+import { ArrowDownIcon, ArrowUpIcon, MessageSquareIcon, PlusIcon } from "lucide-react";
 import { listBrands, type BrandFilters, type BrandSort } from "@/lib/data/brands";
 import { getReferenceData } from "@/lib/data/reference";
 import { BRAND_TYPES, DESIGN_REFERENCE_LABELS } from "@/lib/constants";
@@ -107,11 +107,22 @@ export default async function BrandsPage({ searchParams }: PageProps<"/brands">)
               return (
                 <TableRow key={b.id}>
                   <TableCell>
+                    <div className="flex items-center">
                     <Link href={`/brands/${b.slug}`} className="flex items-center gap-2.5 font-medium hover:underline">
                       <BrandLogo name={b.name} logoUrl={b.logoUrl} logoData={b.logoData} size={26} />
                       {b.name}
                       {b.openBlockers > 0 && <span className="size-2 rounded-full bg-destructive" title={`${b.openBlockers} open blocker(s)`} />}
                     </Link>
+                    {b.openComments > 0 && (
+                      <Link
+                        href={`/brands/${b.slug}?tab=notes`}
+                        className="ml-1 inline-flex items-center gap-0.5 rounded-full bg-primary/10 px-1.5 text-xs text-primary hover:bg-primary/20"
+                        title={`${b.openComments} open comment${b.openComments === 1 ? "" : "s"}`}
+                      >
+                        <MessageSquareIcon className="size-3" /> {b.openComments}
+                      </Link>
+                    )}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <TypeBadge type={b.brandType} />

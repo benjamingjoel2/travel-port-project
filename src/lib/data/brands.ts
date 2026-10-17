@@ -1,7 +1,7 @@
 import "server-only";
 import { desc, eq, isNull, and } from "drizzle-orm";
 import { getDb } from "@/db";
-import { blockers, brands, type Brand, type BrandChecklistItem, type BuildPhase, type PipelineStage, type Region, type TeamMember, type Blocker, type IntegrationSnapshot } from "@/db/schema";
+import { blockers, brands, notes, type Brand, type BrandChecklistItem, type BuildPhase, type PipelineStage, type Region, type TeamMember, type Blocker, type IntegrationSnapshot } from "@/db/schema";
 import { brandActivity, type BrandActivity } from "@/lib/deploy-info";
 import { ensureFreshData } from "@/lib/sync/fresh";
 
@@ -16,13 +16,14 @@ export type BrandSummary = Brand & {
   checklistRequiredMissing: number;
   missingRequiredLabels: string[];
   openBlockers: number;
+  openComments: number;
   activity: BrandActivity;
 };
 
 function summarize(
-  b: Brand & { stage: PipelineStage; region: Region | null; owner: TeamMember | null; phases: BuildPhase[]; checklist: BrandChecklistItem[]; blockers: Blocker[]; snapshots: IntegrationSnapshot[] },
+  b: Brand & { stage: PipelineStage; region: Region | null; owner: TeamMember | null; phases: BuildPhase[]; checklist: BrandChecklistItem[]; blockers: Blocker[]; snapshots: IntegrationSnapshot[]; notes: { doneAt: Date | null }[] },
 ): BrandSummary {
-  const { phases, checklist, blockers: blockerRows, snapshots, ...rest } = b;
+  const { phases, checklist, blockers: blockerRows, snapshots, notes: noteRows, ...rest } = b;
   return {
     ...rest,
     phasesDone: phases.filter((p) => p.status === "done").length,
@@ -35,6 +36,7 @@ function summarize(
       .sort((a, b) => a.sortOrder - b.sortOrder)
       .map((c) => c.label),
     openBlockers: blockerRows.filter((x) => !x.resolvedAt).length,
+    openComments: noteRows.filter((n) => !n.doneAt).length,
     activity: brandActivity(snapshots),
   };
 }
@@ -58,7 +60,7 @@ export async function listBrands(filters: BrandFilters = {}): Promise<BrandSumma
   await ensureFreshData();
   const db = await getDb();
   const rows = await db.query.brands.findMany({
-    with: { stage: true, region: true, owner: true, phases: true, checklist: true, blockers: true, snapshots: true },
+    with: { stage: true, region: true, owner: true, phases: true, checklist: true, blockers: true, snapshots: true, notes: { columns: { doneAt: true } } },
     orderBy: [desc(brands.updatedAt)],
   });
   let list = rows.map(summarize);
@@ -118,7 +120,10 @@ export async function getBrandBySlug(slug: string) {
       phases: { orderBy: (p, { asc }) => [asc(p.phaseNumber)] },
       checklist: { orderBy: (c, { asc }) => [asc(c.sortOrder)] },
       prompts: { orderBy: (p, { desc }) => [desc(p.version)] },
-      notes: { with: { author: true }, orderBy: (n, { desc }) => [desc(n.createdAt)] },
+      notes: {
+        with: { author: { columns: { id: true, name: true } }, doneBy: { columns: { id: true, name: true } } },
+        orderBy: (n, { desc }) => [desc(n.createdAt)],
+      },
       blockers: { orderBy: (b, { desc }) => [desc(b.openedAt)] },
       activity: { orderBy: (a, { desc }) => [desc(a.createdAt)], limit: 50 },
       snapshots: true,
@@ -145,5 +150,16 @@ export async function getOpenBlockers() {
     where: and(isNull(blockers.resolvedAt)),
     with: { brand: { columns: { id: true, name: true, slug: true, country: true } } },
     orderBy: (b, { asc }) => [asc(b.openedAt)],
+  });
+}
+
+/** Comments nobody has marked done yet, newest first, across every brand. */
+export async function getOpenComments(limit = 20) {
+  const db = await getDb();
+  return db.query.notes.findMany({
+    where: isNull(notes.doneAt),
+    with: { author: { columns: { id: true, name: true } }, brand: { columns: { name: true, slug: true, logoUrl: true, logoData: true } } },
+    orderBy: [desc(notes.createdAt)],
+    limit,
   });
 }

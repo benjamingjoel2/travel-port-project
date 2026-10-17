@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { AlertTriangleIcon, ClockIcon } from "lucide-react";
-import { listBrands, getOpenBlockers } from "@/lib/data/brands";
+import { AlertTriangleIcon, ClockIcon, MessageSquareIcon } from "lucide-react";
+import { listBrands, getOpenBlockers, getOpenComments } from "@/lib/data/brands";
 import { getStages, getRegions } from "@/lib/data/reference";
 import { BRAND_TYPES, BRAND_TYPE_LABELS, GOAL_BRAND_COUNT, WAITING_ON_LABELS } from "@/lib/constants";
 import { daysUntil, formatDate, timeAgo } from "@/lib/utils";
@@ -16,7 +16,8 @@ import { getSyncState, isSyncConfigured } from "@/lib/sync";
 export const metadata = { title: "Overview" };
 
 export default async function OverviewPage() {
-  const [brands, stages, regions, blockers, sync] = await Promise.all([listBrands(), getStages(), getRegions(), getOpenBlockers(), getSyncState()]);
+  const [brands, stages, regions, blockers, sync, comments] = await Promise.all([listBrands(), getStages(), getRegions(), getOpenBlockers(), getSyncState(), getOpenComments(8)]);
+  const openCommentCount = brands.reduce((n, b) => n + b.openComments, 0);
   const syncNote = isSyncConfigured() ? (sync.last ? ` Synced with Vercel and GitHub ${timeAgo(sync.last.at)}.` : " Syncing with Vercel and GitHub…") : "";
   const live = brands.filter((b) => b.stage.countsAsLive).length;
   const byStage = stages.map((s) => ({ stage: s, count: brands.filter((b) => b.stageId === s.id).length }));
@@ -58,6 +59,34 @@ export default async function OverviewPage() {
               </Link>
             ))}
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <MessageSquareIcon className="size-4" /> Open comments
+            {openCommentCount > 0 && <span className="rounded-full bg-primary px-1.5 text-xs leading-5 text-primary-foreground tabular-nums">{openCommentCount}</span>}
+          </CardTitle>
+          <CardDescription>Comments on any brand that nobody has marked done yet.</CardDescription>
+        </CardHeader>
+        <CardContent className="divide-y">
+          {comments.length === 0 && <p className="text-sm text-muted-foreground">No open comments. Add one from a brand&apos;s Comments tab.</p>}
+          {comments.map((c) => (
+            <Link key={c.id} href={`/brands/${c.brand.slug}?tab=notes#comment-${c.id}`} className="flex items-start gap-3 py-2.5 text-sm hover:bg-accent/50">
+              <BrandLogo name={c.brand.name} logoUrl={c.brand.logoUrl} logoData={c.brand.logoData} size={28} />
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-baseline gap-x-2 text-xs text-muted-foreground">
+                  <span className="font-medium text-foreground">{c.brand.name}</span>
+                  <span>
+                    {c.author?.name ?? "Someone"} · {timeAgo(c.createdAt)}
+                  </span>
+                </div>
+                <p className="line-clamp-2 whitespace-pre-wrap">{c.body}</p>
+              </div>
+            </Link>
+          ))}
+          {openCommentCount > comments.length && <p className="pt-2 text-xs text-muted-foreground">+ {openCommentCount - comments.length} more on the brands&apos; Comments tabs</p>}
         </CardContent>
       </Card>
 

@@ -9,6 +9,7 @@ import type { BrandSummary } from "@/lib/data/brands";
 import { changeStage } from "@/lib/actions/brands";
 import { orderStagesForBoard, stageMoveBlockedReason } from "@/lib/pipeline";
 import { cn } from "@/lib/utils";
+import { MessageSquareIcon } from "lucide-react";
 import { BrandLogo } from "@/components/brand-logo";
 import { TypeBadge } from "@/components/type-badge";
 import { ProgressPill } from "@/components/progress-pill";
@@ -120,6 +121,12 @@ function BrandCard({ brand, dragging, lastDragEnd }: { brand: BrandSummary; drag
         >
           {brand.name}
         </Link>
+        {brand.openComments > 0 && (
+          <span className="inline-flex shrink-0 items-center gap-0.5 text-xs text-primary" title={`${brand.openComments} open comment${brand.openComments === 1 ? "" : "s"}`}>
+            <MessageSquareIcon className="size-3" />
+            {brand.openComments}
+          </span>
+        )}
         {brand.openBlockers > 0 && <span className="size-2 shrink-0 rounded-full bg-destructive" title={`${brand.openBlockers} open blocker(s)`} />}
       </div>
       <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
