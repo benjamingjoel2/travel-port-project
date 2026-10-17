@@ -34,3 +34,13 @@ describe("map ids", () => {
   });
 });
 
+
+describe("Extrafari markets", () => {
+  it("every market is recognised and on the map", () => {
+    const s = buildCountryShading([
+      { name: "Extrafari", slug: "extrafari", countryCode: null, brandType: "region", marketsCovered: ["Kenya", "Tanzania", "Uganda", "Rwanda", "South Africa", "Namibia", "Botswana", "Zambia"], stage: stage("Building", 40) },
+    ]);
+    expect(Object.keys(s)).toHaveLength(8);
+    for (const id of Object.keys(s)) expect(mapIds.has(id), id).toBe(true);
+  });
+});
