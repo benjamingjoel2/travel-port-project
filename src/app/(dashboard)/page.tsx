@@ -12,15 +12,11 @@ import { BrandLogo } from "@/components/brand-logo";
 import { WorldMap } from "@/components/world-map";
 import { buildCountryShading } from "@/lib/geo";
 import { getSyncState, isSyncConfigured } from "@/lib/sync";
-import { getDb } from "@/db";
-import { syncItems } from "@/db/schema";
-import { eq } from "drizzle-orm";
 
 export const metadata = { title: "Overview" };
 
 export default async function OverviewPage() {
   const [brands, stages, regions, blockers, sync] = await Promise.all([listBrands(), getStages(), getRegions(), getOpenBlockers(), getSyncState()]);
-  const pendingProjects = await (await getDb()).query.syncItems.findMany({ where: eq(syncItems.status, "pending"), columns: { name: true } });
   const syncNote = isSyncConfigured() ? (sync.last ? ` Synced with Vercel and GitHub ${timeAgo(sync.last.at)}.` : " Syncing with Vercel and GitHub…") : "";
   const live = brands.filter((b) => b.stage.countsAsLive).length;
   const byStage = stages.map((s) => ({ stage: s, count: brands.filter((b) => b.stageId === s.id).length }));
@@ -37,25 +33,6 @@ export default async function OverviewPage() {
   return (
     <>
       <PageHeader title="Overview" description={`Where the portfolio stands today.${syncNote}`} />
-
-      {pendingProjects.length > 0 && (
-        <Link
-          href="/settings"
-          className="mb-6 flex items-center justify-between gap-3 rounded-lg border border-warning/50 bg-warning/10 px-4 py-3 text-sm hover:bg-warning/20"
-        >
-          <span>
-            <strong>
-              {pendingProjects.length} new project{pendingProjects.length === 1 ? "" : "s"} found that need a country
-            </strong>
-            <span className="text-muted-foreground">
-              {" "}
-              · {pendingProjects.slice(0, 4).map((p) => p.name).join(", ")}
-              {pendingProjects.length > 4 ? ", …" : ""}
-            </span>
-          </span>
-          <span className="shrink-0 font-medium">Review →</span>
-        </Link>
-      )}
 
       <Card className="mb-6">
         <CardContent className="flex flex-col gap-3">
