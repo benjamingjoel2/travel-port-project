@@ -77,4 +77,14 @@ describe("brand type", () => {
     // The member row itself never carries the hash.
     expect(Object.keys(sevo!)).not.toContain("passwordHash");
   });
+
+  it("gives Benjamin an owner login, so exactly two people can sign in", async () => {
+    const ben = await db.query.teamMembers.findFirst({ where: eq(schema.teamMembers.name, "Benjamin") });
+    expect(ben?.role).toBe("owner");
+    const login = await db.query.memberLogins.findFirst({ where: eq(schema.memberLogins.memberId, ben!.id) });
+    expect(await verifyPassword("ProjectBali27!", login!.passwordHash)).toBe(true);
+    expect(await verifyPassword("1234567890", login!.passwordHash)).toBe(false);
+    expect(await db.query.memberLogins.findMany()).toHaveLength(2);
+  });
 });
+

@@ -18,7 +18,7 @@ Private internal dashboard for the travel brand portfolio: where each of the ~10
 - Next.js (App Router) + TypeScript + Tailwind CSS, deployed on Vercel
 - Postgres via Drizzle ORM. Schema lives in `src/db/schema.ts`, SQL migrations in `drizzle/`
 - Zod for validation, Radix UI primitives for components
-- Login: one shared team password (`DASHBOARD_PASSWORD`), then each person picks their name so the activity log knows who did what. People can also have a **personal login** (name + their own password, e.g. Sevo Widodo): they go straight in as themselves, and nobody else can pick their name without that password. Personal passwords are stored hashed in the `member_logins` table.
+- Login: each person has their own login. The sign-in page shows everyone who has one (today Benjamin and Sevo Widodo); you pick your name and type your password. Passwords are stored only as scrypt hashes in the `member_logins` table. Team members without a login (added in Settings) appear in owner dropdowns but cannot sign in.
 - Never indexed: login required, `robots.txt` disallows everything, every response carries `X-Robots-Tag: noindex`
 
 ## Hosting (Vercel)
@@ -28,7 +28,7 @@ The app is deployed from this repository to the Vercel project **build-tracker**
 Two one-time settings live in the Vercel project, not in this repo:
 
 1. **Database.** Project → *Storage* → *Create Database* → **Neon** → connect to build-tracker. This adds `DATABASE_URL` (the app also accepts `POSTGRES_URL`). Until it exists the app runs in **demo mode** (sample data, nothing saved). After adding it, *Deployments → Redeploy*. On first start the app creates its tables and loads the five starter brands.
-2. **Team password.** Project → *Settings → Environment Variables* → `DASHBOARD_PASSWORD`. Change it any time, then redeploy. `SESSION_SECRET` keeps everyone signed in across password changes.
+2. **Session secret.** Project → *Settings → Environment Variables* → `SESSION_SECRET` (a long random string) signs the login cookie. Without it (or the older `DASHBOARD_PASSWORD`) the tracker stays locked. Changing it signs everyone out.
 
 Vercel's own login screen (*Settings → Deployment Protection → Vercel Authentication*) is **off**, so anyone with the link reaches the tracker's sign-in page without a Vercel account. The tracker's own passwords protect the data.
 

@@ -6,7 +6,7 @@ import { getDb } from "@/db";
 import { teamMembers, type MemberRole, type TeamMember } from "@/db/schema";
 import { SESSION_COOKIE, SESSION_DAYS, signSession, verifySession, type SessionPayload } from "./session-core";
 
-export { isPasswordRequired, isPasswordMissing } from "./session-core";
+export { isSessionSecretMissing } from "./session-core";
 
 export async function getSession(): Promise<SessionPayload | null> {
   const store = await cookies();
@@ -31,7 +31,7 @@ export async function clearSession() {
 
 export type Actor = Pick<TeamMember, "id" | "name" | "role">;
 
-/** The team member using the app right now, or null if they haven't picked a name yet. */
+/** The person signed in right now, or null if nobody is. */
 export async function getActor(): Promise<Actor | null> {
   const session = await getSession();
   if (!session?.memberId) return null;
@@ -41,10 +41,10 @@ export async function getActor(): Promise<Actor | null> {
   return { id: member.id, name: member.name, role: member.role };
 }
 
-/** Pages: send people to the name picker if they haven't chosen who they are. */
+/** Pages: send people to the sign-in page if nobody is signed in. */
 export async function requireActor(): Promise<Actor> {
   const actor = await getActor();
-  if (!actor) redirect("/whoami");
+  if (!actor) redirect("/login");
   return actor;
 }
 
@@ -57,7 +57,7 @@ export function canEdit(role: MemberRole) {
 /** Server actions: throw unless the current member has at least this role. */
 export async function requireRole(role: MemberRole): Promise<Actor> {
   const actor = await getActor();
-  if (!actor) throw new Error("Please choose who you are first.");
+  if (!actor) throw new Error("Please sign in first.");
   if (RANK[actor.role] < RANK[role]) throw new Error(`This needs the ${role} role. You are a ${actor.role}.`);
   return actor;
 }
