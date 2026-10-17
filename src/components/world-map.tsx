@@ -40,7 +40,7 @@ export function WorldMap({ shading, stages }: { shading: Record<string, CountryS
                       onMouseLeave={() => setHover(null)}
                       onClick={() => open(name, shade)}
                       className={shade ? "cursor-pointer outline-none transition-opacity hover:opacity-80" : "outline-none"}
-                      style={{ fill: shade ? shade.color : "var(--muted)", stroke: "var(--background)", strokeWidth: 0.5 }}
+                      style={{ fill: shade ? shade.color : "var(--map-land)", stroke: "var(--map-border)", strokeWidth: 0.6 }}
                     />
                   );
                 })}
