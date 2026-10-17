@@ -15,7 +15,7 @@ const NAV = [
   { href: "/settings", label: "Settings", icon: SettingsIcon },
 ];
 
-export function AppSidebar({ footer }: { footer: React.ReactNode }) {
+export function AppSidebar({ footer, bell }: { footer: React.ReactNode; bell?: React.ReactNode }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
@@ -49,6 +49,7 @@ export function AppSidebar({ footer }: { footer: React.ReactNode }) {
           {open ? <XIcon /> : <MenuIcon />}
         </Button>
         <Brand />
+        <div className="ml-auto">{bell}</div>
       </div>
       {open && (
         <div className="border-b bg-sidebar py-2 md:hidden">
@@ -59,8 +60,9 @@ export function AppSidebar({ footer }: { footer: React.ReactNode }) {
 
       {/* Desktop sidebar */}
       <aside className="fixed inset-y-0 left-0 hidden w-56 flex-col border-r bg-sidebar text-sidebar-foreground md:flex">
-        <div className="flex h-14 items-center px-4">
+        <div className="flex h-14 items-center justify-between pr-2 pl-4">
           <Brand />
+          {bell}
         </div>
         {nav}
         <div className="mt-auto border-t p-2">{footer}</div>

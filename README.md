@@ -77,6 +77,8 @@ You can filter by type on the Brands table and the Pipeline board. The Overview 
 
 **Comments** (stored in the `notes` table): anyone signed in can comment on a brand from its *Comments & blockers* tab. The author or an owner can edit or delete a comment, and anyone can mark it done (or reopen it). Open comments show on the Overview, as a count on the Brands table and Pipeline cards, and in the brand's activity log.
 
+**Notifications**: the bell next to *Build Tracker* in the sidebar shows what the other person did (comments, done/reopened, blockers, stage changes) plus projects auto-sync found. Your own actions never notify you. The red number is what's new since you last opened the bell; opening it marks everything read (stored per person in `team_members.notifications_seen_at`).
+
 Two flags on a stage drive the rules: `counts_as_live` feeds the "N / 100 live" number (Live and Migrated), and `requires_checklist` stops a brand entering that stage until every required checklist item is ticked.
 
 Roles: **owner** manages the team and settings, **editor** changes brands, **viewer** only looks.

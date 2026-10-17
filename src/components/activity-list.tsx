@@ -1,7 +1,7 @@
 import type { ActivityEntry } from "@/db/schema";
 import { timeAgo } from "@/lib/utils";
 
-function describe(entry: ActivityEntry): string {
+export function describe(entry: Pick<ActivityEntry, "action" | "details">): string {
   const d = (entry.details ?? {}) as Record<string, string | number | undefined>;
   switch (entry.action) {
     case "brand_created":

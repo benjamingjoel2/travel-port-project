@@ -36,9 +36,9 @@ export async function addNote(brandId: string, body: string): Promise<ActionResu
     const db = await getDb();
     const brand = await db.query.brands.findFirst({ where: eq(brands.id, brandId), columns: { slug: true } });
     if (!brand) return { ok: false, error: "Brand not found." };
-    await db.insert(notes).values({ brandId, authorId: actor.id, body: parsed.data });
+    const [note] = await db.insert(notes).values({ brandId, authorId: actor.id, body: parsed.data }).returning({ id: notes.id });
     await db.update(brands).set({ updatedAt: new Date() }).where(eq(brands.id, brandId));
-    await logActivity(db, brandId, actor, "note_added", { preview: parsed.data.slice(0, 80) });
+    await logActivity(db, brandId, actor, "note_added", { preview: parsed.data.slice(0, 80), noteId: note.id });
     refresh(brand.slug);
     return { ok: true };
   } catch (e) {
@@ -56,7 +56,7 @@ export async function updateNote(noteId: string, body: string): Promise<ActionRe
     if (note.authorId !== actor.id && actor.role !== "owner") return { ok: false, error: "Only the author or an owner can edit this comment." };
     if (note.body === parsed.data) return { ok: true };
     await db.update(notes).set({ body: parsed.data, editedAt: new Date(), updatedAt: new Date() }).where(eq(notes.id, noteId));
-    await logActivity(db, note.brandId, actor, "note_edited", { preview: parsed.data.slice(0, 80) });
+    await logActivity(db, note.brandId, actor, "note_edited", { preview: parsed.data.slice(0, 80), noteId });
     refresh(note.brand.slug);
     return { ok: true };
   } catch (e) {
@@ -74,7 +74,7 @@ export async function setNoteDone(noteId: string, done: boolean): Promise<Action
       .update(notes)
       .set(done ? { doneAt: new Date(), doneById: actor.id, updatedAt: new Date() } : { doneAt: null, doneById: null, updatedAt: new Date() })
       .where(eq(notes.id, noteId));
-    await logActivity(db, note.brandId, actor, done ? "note_done" : "note_reopened", { preview: note.body.slice(0, 80) });
+    await logActivity(db, note.brandId, actor, done ? "note_done" : "note_reopened", { preview: note.body.slice(0, 80), noteId });
     refresh(note.brand.slug);
     return { ok: true };
   } catch (e) {

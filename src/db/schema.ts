@@ -64,6 +64,8 @@ export const teamMembers = pgTable("team_members", {
   email: text("email").unique(),
   role: memberRoleEnum("role").notNull().default("editor"),
   active: boolean("active").notNull().default(true),
+  /** Everything in the notification bell before this time counts as read. */
+  notificationsSeenAt: timestamp("notifications_seen_at", { withTimezone: true }),
   ...timestamps,
 });
 
