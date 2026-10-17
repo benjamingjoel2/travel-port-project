@@ -108,6 +108,13 @@ const PATCHES: { id: string; run: (db: Db) => Promise<void> }[] = [
         .onConflictDoUpdate({ target: schema.memberLogins.memberId, set: { passwordHash, updatedAt: new Date() } });
     },
   },
+  {
+    // Sevo is an owner too.
+    id: "2026-10-17-sevo-owner",
+    run: async (db) => {
+      await db.update(schema.teamMembers).set({ role: "owner", updatedAt: new Date() }).where(eq(schema.teamMembers.name, "Sevo Widodo"));
+    },
+  },
 ];
 
 export async function applyDataPatches(db: Db) {

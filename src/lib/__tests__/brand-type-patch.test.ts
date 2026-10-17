@@ -72,6 +72,7 @@ describe("brand type", () => {
   it("gives Sevo Widodo a personal login", async () => {
     const sevo = await db.query.teamMembers.findFirst({ where: eq(schema.teamMembers.name, "Sevo Widodo") });
     expect(sevo?.active).toBe(true);
+    expect(sevo?.role).toBe("owner");
     const login = await db.query.memberLogins.findFirst({ where: eq(schema.memberLogins.memberId, sevo!.id) });
     expect(await verifyPassword("1234567890", login!.passwordHash)).toBe(true);
     // The member row itself never carries the hash.
