@@ -10,14 +10,9 @@ export type SessionPayload = {
   memberName?: string;
 };
 
-/** True when the dashboard is protected by DASHBOARD_PASSWORD. */
-export function isPasswordRequired(): boolean {
-  return Boolean(process.env.DASHBOARD_PASSWORD);
-}
-
-/** A real database is attached but nobody set a password: refuse to serve data. */
-export function isPasswordMissing(): boolean {
-  return Boolean(databaseUrl()) && !process.env.DASHBOARD_PASSWORD;
+/** A real database is attached but there is no secret to sign sessions with: refuse to serve data. */
+export function isSessionSecretMissing(): boolean {
+  return Boolean(databaseUrl()) && !process.env.SESSION_SECRET && !process.env.DASHBOARD_PASSWORD;
 }
 
 function secret(): Uint8Array {

@@ -1,12 +1,11 @@
-import Link from "next/link";
-import { LogOutIcon, UserRoundIcon, UsersIcon } from "lucide-react";
+import { LogOutIcon, UserRoundIcon } from "lucide-react";
 import type { Actor } from "@/lib/auth";
 import { ROLE_LABELS } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { signOut } from "@/app/whoami/actions";
+import { signOut } from "@/app/login/actions";
 
-export function MemberMenu({ actor, passwordRequired }: { actor: Actor; passwordRequired: boolean }) {
+export function MemberMenu({ actor }: { actor: Actor }) {
   return (
     <div className="flex items-center gap-1">
       <div className="flex min-w-0 flex-1 items-center gap-2 px-1.5">
@@ -23,19 +22,12 @@ export function MemberMenu({ actor, passwordRequired }: { actor: Actor; password
           <div className="text-xs text-muted-foreground">{ROLE_LABELS[actor.role]}</div>
         </div>
       </div>
-      <Button asChild variant="ghost" size="icon-sm" title="Switch person">
-        <Link href="/whoami">
-          <UsersIcon />
-        </Link>
-      </Button>
       <ThemeToggle />
-      {passwordRequired && (
-        <form action={signOut}>
-          <Button type="submit" variant="ghost" size="icon-sm" title="Sign out">
-            <LogOutIcon />
-          </Button>
-        </form>
-      )}
+      <form action={signOut}>
+        <Button type="submit" variant="ghost" size="icon-sm" title="Sign out (to switch person)">
+          <LogOutIcon />
+        </Button>
+      </form>
       <span className="sr-only">
         <UserRoundIcon />
       </span>

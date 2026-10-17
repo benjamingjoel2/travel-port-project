@@ -86,6 +86,28 @@ const PATCHES: { id: string; run: (db: Db) => Promise<void> }[] = [
         .onConflictDoUpdate({ target: schema.memberLogins.memberId, set: { passwordHash, updatedAt: new Date() } });
     },
   },
+  {
+    // Benjamin (owner) gets a personal login too; from now on only people with one can sign in.
+    id: "2026-10-17-benjamin-login",
+    run: async (db) => {
+      const passwordHash =
+        "scrypt$dd3aea73a2dcb0c4ea378a675540d571$31863f86771a7acccfd4ee5651c4820529bed201f443eaa02fc43b3aee7f4d10ffeea975ec94c61074e8db0be262198acfe576440587d70a100cf7168f65fbda";
+      const matches = await db.query.teamMembers.findMany({
+        where: sql`lower(${schema.teamMembers.name}) in ('benjamin', 'ben') or lower(${schema.teamMembers.name}) like 'benjamin %'`,
+        orderBy: (m, { asc }) => [asc(m.createdAt)],
+      });
+      let member = matches.find((m) => m.role === "owner") ?? matches[0];
+      if (member) {
+        await db.update(schema.teamMembers).set({ name: "Benjamin", role: "owner", active: true, updatedAt: new Date() }).where(eq(schema.teamMembers.id, member.id));
+      } else {
+        [member] = await db.insert(schema.teamMembers).values({ name: "Benjamin", role: "owner" }).returning();
+      }
+      await db
+        .insert(schema.memberLogins)
+        .values({ memberId: member.id, passwordHash })
+        .onConflictDoUpdate({ target: schema.memberLogins.memberId, set: { passwordHash, updatedAt: new Date() } });
+    },
+  },
 ];
 
 export async function applyDataPatches(db: Db) {
