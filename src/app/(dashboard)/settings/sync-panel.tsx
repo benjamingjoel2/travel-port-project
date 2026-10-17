@@ -3,7 +3,10 @@
 import { useState, useTransition } from "react";
 import { RefreshCwIcon } from "lucide-react";
 import { toast } from "sonner";
-import type { SyncItem } from "@/db/schema";
+import type { BrandType, SyncItem } from "@/db/schema";
+import { BRAND_TYPES, BRAND_TYPE_LABELS } from "@/lib/constants";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { SyncSummary } from "@/lib/sync/engine";
 import { addSyncItemAsBrand, runSyncNow, setSyncItemStatus } from "@/lib/actions/sync";
 import { timeAgo } from "@/lib/utils";
@@ -72,7 +75,7 @@ export function SyncPanel({ configured, sources, last, pending, ignored, canEdit
           <div className="space-y-2">
             <div className="font-medium">Needs a country ({pending.length})</div>
             <p className="text-xs text-muted-foreground">
-              These projects don&apos;t say which country they cover. Pick one to add it as a brand, or ignore it if it isn&apos;t a travel brand.
+              These projects don&apos;t say which country they cover. Choose the brand type and where it operates to add it, or ignore it if it isn&apos;t a travel brand.
             </p>
             <ul className="divide-y rounded-md border">
               {vercelItems.map((item) => (
@@ -127,8 +130,12 @@ export function SyncPanel({ configured, sources, last, pending, ignored, canEdit
 }
 
 function ReviewRow({ item, canEdit }: { item: SyncItem; canEdit: boolean }) {
+  const [type, setType] = useState<BrandType>("country");
   const [country, setCountry] = useState("");
+  const [label, setLabel] = useState("");
+  const [markets, setMarkets] = useState("");
   const [pending, start] = useTransition();
+  const ready = type === "country" ? Boolean(country) : Boolean(label.trim() && markets.trim());
   return (
     <li className="flex flex-wrap items-center gap-2 px-3 py-2">
       <div className="min-w-40 flex-1">
@@ -140,15 +147,34 @@ function ReviewRow({ item, canEdit }: { item: SyncItem; canEdit: boolean }) {
       </div>
       {canEdit && (
         <>
-          <div className="w-52">
-            <CountryCombobox value={country} onChange={(code) => setCountry(code)} />
-          </div>
+          <Select value={type} onValueChange={(v) => setType(v as BrandType)}>
+            <SelectTrigger className="w-28" aria-label="Brand type">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {BRAND_TYPES.map((t) => (
+                <SelectItem key={t} value={t}>
+                  {BRAND_TYPE_LABELS[t]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {type === "country" ? (
+            <div className="w-52">
+              <CountryCombobox value={country} onChange={(code) => setCountry(code)} />
+            </div>
+          ) : (
+            <>
+              <Input className="w-40" value={label} onChange={(e) => setLabel(e.target.value)} placeholder={type === "region" ? "Region, e.g. East Africa" : "Niche, e.g. Golf safaris"} aria-label={type === "region" ? "Region name" : "Niche"} />
+              <Input className="w-56" value={markets} onChange={(e) => setMarkets(e.target.value)} placeholder={type === "region" ? "Countries, comma separated" : "Activities, comma separated"} aria-label="Markets covered" />
+            </>
+          )}
           <Button
             size="sm"
-            disabled={pending || !country}
+            disabled={pending || !ready}
             onClick={() =>
               start(async () => {
-                const res = await addSyncItemAsBrand(item.id, country);
+                const res = await addSyncItemAsBrand(item.id, type === "country" ? { brandType: "country", countryCode: country } : { brandType: type, label, markets });
                 if (res.ok) toast.success(res.message ?? "Added");
                 else toast.error(res.error);
               })

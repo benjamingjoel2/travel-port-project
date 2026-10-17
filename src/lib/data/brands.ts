@@ -47,6 +47,7 @@ export type BrandFilters = {
   region?: string; // region id
   owner?: string; // member id
   priority?: string;
+  type?: string;
   sort?: BrandSort;
   dir?: "asc" | "desc";
 };
@@ -70,6 +71,7 @@ export async function listBrands(filters: BrandFilters = {}): Promise<BrandSumma
   if (filters.region) list = list.filter((b) => b.regionId === filters.region);
   if (filters.owner) list = list.filter((b) => (filters.owner === "none" ? !b.ownerId : b.ownerId === filters.owner));
   if (filters.priority) list = list.filter((b) => b.priority === filters.priority);
+  if (filters.type) list = list.filter((b) => b.brandType === filters.type);
 
   const dir = filters.dir === "desc" ? -1 : 1;
   const sort = filters.sort ?? "updated";

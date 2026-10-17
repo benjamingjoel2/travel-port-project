@@ -2,9 +2,9 @@
 
 import { useActionState, useState } from "react";
 import Link from "next/link";
-import type { Brand, PipelineStage, Region, TeamMember } from "@/db/schema";
+import type { Brand, BrandType, PipelineStage, Region, TeamMember } from "@/db/schema";
 import type { BrandFormState } from "@/lib/actions/brands";
-import { DESIGN_REFERENCES, DESIGN_REFERENCE_LABELS, NONE_VALUE, PRIORITIES, PRIORITY_LABELS } from "@/lib/constants";
+import { BRAND_TYPES, BRAND_TYPE_LABELS, BRAND_TYPE_PLACE_LABELS, DESIGN_REFERENCES, DESIGN_REFERENCE_LABELS, NONE_VALUE, PRIORITIES, PRIORITY_LABELS } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,6 +41,7 @@ export function BrandForm({ brand, stages, regions, members, action, cancelHref 
   const [state, formAction, pending] = useActionState(action, undefined);
   const errors = state?.errors ?? {};
   const [countryCode, setCountryCode] = useState(brand?.countryCode ?? "");
+  const [brandType, setBrandType] = useState<BrandType>(brand?.brandType ?? "country");
   const [logoData, setLogoData] = useState<string | undefined>(undefined);
   const [logoError, setLogoError] = useState<string | null>(null);
   const defaultStage = brand?.stageId ?? stages.find((s) => s.key === "idea")?.id ?? stages[0]?.id;
@@ -69,10 +70,54 @@ export function BrandForm({ brand, stages, regions, members, action, cancelHref 
           <Field errors={errors} name="name" label="Brand name">
             <Input id="name" name="name" defaultValue={brand?.name ?? ""} required maxLength={120} placeholder="Nusa & Co." />
           </Field>
-          <Field errors={errors} name="countryCode" label="Country">
-            <CountryCombobox id="countryCode" value={countryCode} onChange={(code) => setCountryCode(code)} />
-            {errors.country && <p className="text-xs text-destructive">{errors.country}</p>}
+          <Field errors={errors} name="brandType" label="Brand type">
+            <Select name="brandType" value={brandType} onValueChange={(v) => setBrandType(v as BrandType)}>
+              <SelectTrigger id="brandType">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {BRAND_TYPES.map((t) => (
+                  <SelectItem key={t} value={t}>
+                    {BRAND_TYPE_LABELS[t]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </Field>
+          {brandType === "country" ? (
+            <Field errors={errors} name="countryCode" label="Country">
+              <CountryCombobox id="countryCode" value={countryCode} onChange={(code) => setCountryCode(code)} />
+              {errors.country && <p className="text-xs text-destructive">{errors.country}</p>}
+            </Field>
+          ) : (
+            <Field errors={errors} name="country" label={BRAND_TYPE_PLACE_LABELS[brandType]}>
+              <Input
+                id="country"
+                name="country"
+                required
+                maxLength={120}
+                defaultValue={brand && brand.brandType === brandType ? brand.country : ""}
+                placeholder={brandType === "region" ? "Arab world, East Africa…" : "Golf safaris, Diving…"}
+              />
+              <input type="hidden" name="countryCode" value="" />
+            </Field>
+          )}
+          <div className="sm:col-span-2">
+            <Field
+              errors={errors}
+              name="marketsCovered"
+              label="Markets covered"
+              hint={
+                brandType === "niche"
+                  ? "The activity or activities, comma separated or one per line."
+                  : brandType === "region"
+                    ? "Every country the brand covers, comma separated or one per line. They're coloured on the map."
+                    : "Leave empty for just this country, or list more."
+              }
+            >
+              <Textarea id="marketsCovered" name="marketsCovered" rows={2} defaultValue={(brand?.marketsCovered ?? []).join(", ")} />
+            </Field>
+          </div>
           <Field errors={errors} name="regionId" label="Region">
             <Select name="regionId" defaultValue={brand?.regionId ?? NONE}>
               <SelectTrigger id="regionId">

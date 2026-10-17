@@ -1,4 +1,4 @@
-import type { DesignReference, Priority, WaitingOn, PhaseStatus, MemberRole } from "@/db/schema";
+import type { BrandType, DesignReference, Priority, WaitingOn, PhaseStatus, MemberRole } from "@/db/schema";
 
 export const GOAL_BRAND_COUNT = 100;
 
@@ -63,3 +63,8 @@ export const DESIGN_REFERENCES = Object.keys(DESIGN_REFERENCE_LABELS) as DesignR
 export const PHASE_STATUSES = Object.keys(PHASE_STATUS_LABELS) as PhaseStatus[];
 export const WAITING_ON_OPTIONS = Object.keys(WAITING_ON_LABELS) as WaitingOn[];
 export const ROLES = Object.keys(ROLE_LABELS) as MemberRole[];
+
+export const BRAND_TYPE_LABELS: Record<BrandType, string> = { country: "Country", region: "Region", niche: "Niche" };
+export const BRAND_TYPES = Object.keys(BRAND_TYPE_LABELS) as BrandType[];
+/** What the "country" field means for each brand type. */
+export const BRAND_TYPE_PLACE_LABELS: Record<BrandType, string> = { country: "Country", region: "Region name", niche: "Niche" };

@@ -67,6 +67,14 @@ Checks: `npm run check` runs lint, typecheck and unit tests. `npm run build` doe
 
 Everything hangs off **brands**. Each brand has 5 **build phases** and a copy of the **launch checklist** (both created automatically), plus **prompts** (every version kept), **notes**, **blockers** and an **activity log**. Pipeline **stages**, **regions** and the **checklist template** are tables, not hard-coded, so they can be edited in Settings.
 
+Every brand has a **brand type**:
+
+- **Country**: one country (Nusa & Co. → Indonesia). Its *markets covered* is that country.
+- **Region**: several countries under one brand (Aravia → Arab world: UAE, Saudi Arabia, Oman, Qatar, Jordan, Bahrain, Egypt). Each market is shaded on the world map.
+- **Niche**: built around an activity rather than a place (for example scuba diving). *Markets covered* lists the activity. Niche brands don't appear on the map.
+
+You can filter by type on the Brands table and the Pipeline board. The Overview shows the count per type. Auto-sync adds new projects as Country brands; switch the type on the brand's Edit page or when reviewing an unclear project in Settings.
+
 Two flags on a stage drive the rules: `counts_as_live` feeds the "N / 100 live" number (Live and Migrated), and `requires_checklist` stops a brand entering that stage until every required checklist item is ticked.
 
 Roles: **owner** manages the team and settings, **editor** changes brands, **viewer** only looks.

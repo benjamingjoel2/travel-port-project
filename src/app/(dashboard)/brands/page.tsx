@@ -2,7 +2,8 @@ import Link from "next/link";
 import { ArrowDownIcon, ArrowUpIcon, PlusIcon } from "lucide-react";
 import { listBrands, type BrandFilters, type BrandSort } from "@/lib/data/brands";
 import { getReferenceData } from "@/lib/data/reference";
-import { DESIGN_REFERENCE_LABELS } from "@/lib/constants";
+import { BRAND_TYPES, DESIGN_REFERENCE_LABELS } from "@/lib/constants";
+import type { BrandType } from "@/db/schema";
 import { daysUntil, formatDate, timeAgo } from "@/lib/utils";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,7 @@ import { BrandLogo } from "@/components/brand-logo";
 import { ProgressPill } from "@/components/progress-pill";
 import { BrandFilterBar } from "./filter-bar";
 import { DeployDot } from "@/components/deploy-status";
+import { TypeBadge } from "@/components/type-badge";
 
 export const metadata = { title: "Brands" };
 
@@ -36,6 +38,7 @@ export default async function BrandsPage({ searchParams }: PageProps<"/brands">)
   const sp = await searchParams;
   const filters: BrandFilters = {
     q: first(sp.q),
+    type: BRAND_TYPES.includes(first(sp.type) as BrandType) ? first(sp.type) : undefined,
     stage: first(sp.stage),
     region: first(sp.region),
     owner: first(sp.owner),
@@ -76,7 +79,8 @@ export default async function BrandsPage({ searchParams }: PageProps<"/brands">)
           <TableHeader>
             <TableRow>
               <SortHead k="name" sort={filters.sort!} dir={filters.dir!} href={sortLink("name")}>Brand</SortHead>
-              <SortHead k="country" sort={filters.sort!} dir={filters.dir!} href={sortLink("country")}>Country</SortHead>
+              <TableHead>Type</TableHead>
+              <SortHead k="country" sort={filters.sort!} dir={filters.dir!} href={sortLink("country")}>Market</SortHead>
               <SortHead k="region" sort={filters.sort!} dir={filters.dir!} href={sortLink("region")}>Region</SortHead>
               <SortHead k="stage" sort={filters.sort!} dir={filters.dir!} href={sortLink("stage")}>Stage</SortHead>
               <TableHead>Reference</TableHead>
@@ -92,7 +96,7 @@ export default async function BrandsPage({ searchParams }: PageProps<"/brands">)
           <TableBody>
             {brands.length === 0 && (
               <TableRow>
-                <TableCell colSpan={12} className="py-10 text-center text-muted-foreground">
+                <TableCell colSpan={13} className="py-10 text-center text-muted-foreground">
                   No brands match. <Link href="/brands" className="underline">Clear filters</Link> or <Link href="/brands/new" className="underline">add one</Link>.
                 </TableCell>
               </TableRow>
@@ -109,7 +113,15 @@ export default async function BrandsPage({ searchParams }: PageProps<"/brands">)
                       {b.openBlockers > 0 && <span className="size-2 rounded-full bg-destructive" title={`${b.openBlockers} open blocker(s)`} />}
                     </Link>
                   </TableCell>
-                  <TableCell>{b.country}</TableCell>
+                  <TableCell>
+                    <TypeBadge type={b.brandType} />
+                  </TableCell>
+                  <TableCell title={b.brandType !== "country" ? b.marketsCovered.join(", ") : undefined}>
+                    {b.country}
+                    {b.brandType !== "country" && b.marketsCovered.length > 0 && (
+                      <span className="ml-1 text-xs text-muted-foreground">· {b.marketsCovered.length} {b.brandType === "niche" ? "focus" : "markets"}</span>
+                    )}
+                  </TableCell>
                   <TableCell className="text-muted-foreground">{b.region?.name ?? "—"}</TableCell>
                   <TableCell>
                     <StageBadge stage={b.stage} />

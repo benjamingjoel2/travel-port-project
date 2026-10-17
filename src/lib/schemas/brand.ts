@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { DESIGN_REFERENCES, NONE_VALUE, PRIORITIES } from "@/lib/constants";
+import { BRAND_TYPES, DESIGN_REFERENCES, NONE_VALUE, PRIORITIES } from "@/lib/constants";
 
 /** Optional foreign key from a <select>: "", NONE_VALUE or missing all mean null. */
 const optionalId = z.preprocess((v) => (v === NONE_VALUE || v === "" || v === undefined ? null : v), z.string().uuid().nullable());
@@ -21,9 +21,25 @@ const optionalUrl = z
   .optional()
   .refine((v) => !v || /^https?:\/\//i.test(v) || /^[a-z0-9.-]+\.[a-z]{2,}(\/.*)?$/i.test(v), "Enter a web address like https://example.com");
 
-export const brandFormSchema = z.object({
+/** "Jordan, Oman\nEgypt" → ["Jordan", "Oman", "Egypt"] (deduplicated, order kept). */
+export function parseMarkets(raw: string | undefined | null): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const part of (raw ?? "").split(/[\n,;]+/)) {
+    const v = part.trim();
+    if (!v || seen.has(v.toLowerCase())) continue;
+    seen.add(v.toLowerCase());
+    out.push(v.slice(0, 80));
+  }
+  return out.slice(0, 60);
+}
+
+export const brandFormSchema = z
+  .object({
   name: z.string().trim().min(1, "Name is required.").max(120),
-  country: z.string().trim().min(1, "Country is required.").max(120),
+  brandType: z.enum(BRAND_TYPES).default("country"),
+  country: z.string().trim().min(1, "This field is required.").max(120),
+  marketsCovered: z.string().optional().default("").transform(parseMarkets),
   countryCode: z
     .string()
     .trim()
@@ -70,7 +86,19 @@ export const brandFormSchema = z.object({
     .max(400_000, "Logo must be under 300 KB.")
     .refine((v) => v === "" || v.startsWith("data:image/"), "Logo must be an image.")
     .optional(),
-});
+  })
+  .superRefine((v, ctx) => {
+    if (v.brandType === "country" && !v.countryCode) ctx.addIssue({ code: "custom", path: ["countryCode"], message: "Pick a country." });
+    if (v.brandType !== "country" && v.marketsCovered.length === 0)
+      ctx.addIssue({ code: "custom", path: ["marketsCovered"], message: v.brandType === "region" ? "List the countries this brand covers." : "List the activity or activities." });
+  })
+  .transform((v) => ({
+    ...v,
+    // Region and niche brands aren't tied to one country on the map.
+    countryCode: v.brandType === "country" ? v.countryCode : null,
+    // A country brand covers its own country unless more are listed.
+    marketsCovered: v.brandType === "country" && v.marketsCovered.length === 0 ? [v.country] : v.marketsCovered,
+  }));
 
 export type BrandFormInput = z.input<typeof brandFormSchema>;
 export type BrandFormValues = z.output<typeof brandFormSchema>;
