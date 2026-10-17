@@ -57,6 +57,18 @@ const PATCHES: { id: string; run: (db: Db) => Promise<void> }[] = [
       }),
   },
   {
+    // Extrafari also sells Southern Africa: add those markets (keeping any edits) and widen its label.
+    id: "2026-10-17-extrafari-southern-africa",
+    run: async (db) => {
+      const brand = await db.query.brands.findFirst({ where: eq(schema.brands.githubRepo, "benjamingjoel2/extrafari") });
+      if (!brand) return;
+      const markets = [...brand.marketsCovered];
+      for (const m of ["South Africa", "Namibia", "Botswana", "Zambia"]) if (!markets.some((x) => x.toLowerCase() === m.toLowerCase())) markets.push(m);
+      const country = brand.country === "East Africa" ? "East & Southern Africa" : brand.country;
+      await db.update(schema.brands).set({ marketsCovered: markets, country, updatedAt: new Date() }).where(eq(schema.brands.id, brand.id));
+    },
+  },
+  {
     // Sevo gets a personal login (name "Sevo Widodo"). Only the hash is stored here.
     id: "2026-10-17-sevo-login",
     run: async (db) => {

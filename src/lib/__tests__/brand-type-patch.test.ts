@@ -58,14 +58,14 @@ describe("brand type", () => {
     expect(await db.query.brands.findMany({ where: eq(schema.brands.name, "Aravia") })).toHaveLength(1);
   });
 
-  it("adds Extrafari as an East Africa region brand even before auto-sync has seen it", async () => {
+  it("adds Extrafari as an East & Southern Africa region brand even before auto-sync has seen it", async () => {
     const all = await db.query.brands.findMany({ where: eq(schema.brands.githubRepo, "benjamingjoel2/extrafari"), with: { region: true } });
     expect(all).toHaveLength(1);
     expect(all[0].name).toBe("Extrafari");
     expect(all[0].brandType).toBe("region");
-    expect(all[0].country).toBe("East Africa");
+    expect(all[0].country).toBe("East & Southern Africa");
     expect(all[0].countryCode).toBeNull();
-    expect(all[0].marketsCovered).toEqual(["Kenya", "Tanzania", "Uganda", "Rwanda"]);
+    expect(all[0].marketsCovered).toEqual(["Kenya", "Tanzania", "Uganda", "Rwanda", "South Africa", "Namibia", "Botswana", "Zambia"]);
     expect(all[0].region?.name).toBe("East Africa");
   });
 
