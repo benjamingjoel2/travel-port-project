@@ -5,7 +5,7 @@ import { useEffect, useState, useTransition } from "react";
 import { SearchIcon, XIcon } from "lucide-react";
 import type { PipelineStage, Region, TeamMember } from "@/db/schema";
 import type { BrandFilters } from "@/lib/data/brands";
-import { PRIORITIES, PRIORITY_LABELS } from "@/lib/constants";
+import { BRAND_TYPES, BRAND_TYPE_LABELS, PRIORITIES, PRIORITY_LABELS } from "@/lib/constants";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -38,7 +38,7 @@ export function BrandFilterBar({ stages, regions, members, current }: { stages: 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q]);
 
-  const hasFilters = Boolean(current.q || current.stage || current.region || current.owner || current.priority);
+  const hasFilters = Boolean(current.q || current.type || current.stage || current.region || current.owner || current.priority);
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -46,6 +46,19 @@ export function BrandFilterBar({ stages, regions, members, current }: { stages: 
         <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name or country" className="w-56 pl-8" />
       </div>
+      <Select value={current.type ?? ALL} onValueChange={(v) => apply({ type: v === ALL ? undefined : v })}>
+        <SelectTrigger className="w-36">
+          <SelectValue placeholder="Type" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={ALL}>All types</SelectItem>
+          {BRAND_TYPES.map((t) => (
+            <SelectItem key={t} value={t}>
+              {BRAND_TYPE_LABELS[t]}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
       <Select value={current.stage ?? ALL} onValueChange={(v) => apply({ stage: v === ALL ? undefined : v })}>
         <SelectTrigger className="w-44">
           <SelectValue placeholder="Stage" />

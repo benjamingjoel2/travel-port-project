@@ -20,12 +20,14 @@ export const priorityEnum = pgEnum("priority", ["high", "medium", "low"]);
 export const designReferenceEnum = pgEnum("design_reference", ["atlas", "vita", "other"]);
 export const phaseStatusEnum = pgEnum("phase_status", ["not_started", "in_progress", "done"]);
 export const waitingOnEnum = pgEnum("waiting_on", ["me", "team", "claude_code", "third_party"]);
+export const brandTypeEnum = pgEnum("brand_type", ["country", "region", "niche"]);
 
 export type MemberRole = (typeof memberRoleEnum.enumValues)[number];
 export type Priority = (typeof priorityEnum.enumValues)[number];
 export type DesignReference = (typeof designReferenceEnum.enumValues)[number];
 export type PhaseStatus = (typeof phaseStatusEnum.enumValues)[number];
 export type WaitingOn = (typeof waitingOnEnum.enumValues)[number];
+export type BrandType = (typeof brandTypeEnum.enumValues)[number];
 
 const timestamps = {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -94,7 +96,12 @@ export const brands = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     name: text("name").notNull(),
     slug: text("slug").notNull().unique(),
+    /** Country brand (one country), Region brand (several countries) or Niche brand (an activity). */
+    brandType: brandTypeEnum("brand_type").notNull().default("country"),
+    /** Country name for country brands; region name ("Arab world") or niche ("Golf safaris") otherwise. */
     country: text("country").notNull(),
+    /** Countries covered (country and region brands) or activities (niche brands). */
+    marketsCovered: jsonb("markets_covered").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
     /** ISO 3166-1 alpha-2, e.g. "ID". Drives the world map. */
     countryCode: text("country_code"),
     regionId: uuid("region_id").references(() => regions.id, { onDelete: "set null" }),

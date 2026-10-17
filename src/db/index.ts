@@ -5,6 +5,7 @@ import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import * as schema from "./schema";
 import { databaseUrl, directDatabaseUrl } from "@/lib/env";
 import { seedDatabase } from "./seed";
+import { applyDataPatches } from "./patches";
 
 export type Db = PgDatabase<PgQueryResultHKT, typeof schema, ExtractTablesWithRelations<typeof schema>>;
 
@@ -49,6 +50,7 @@ async function createHolder(): Promise<Holder> {
         const migrator = drizzle(client, { schema });
         await migrate(migrator, { migrationsFolder: MIGRATIONS_FOLDER });
         await seedDatabase(migrator as unknown as Db);
+        await applyDataPatches(migrator as unknown as Db);
       } finally {
         await client.query("select pg_advisory_unlock(727101)").catch(() => {});
         await client.end().catch(() => {});
@@ -68,6 +70,7 @@ async function createHolder(): Promise<Holder> {
   const ready = (async () => {
     await migrate(db as never, { migrationsFolder: MIGRATIONS_FOLDER });
     await seedDatabase(db);
+    await applyDataPatches(db);
   })();
   return { db, mode, ready };
 }

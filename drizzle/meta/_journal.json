@@ -15,6 +15,13 @@
       "when": 1791995621047,
       "tag": "0001_auto_sync",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792260097449,
+      "tag": "0002_brand_type",
+      "breakpoints": true
     }
   ]
 }

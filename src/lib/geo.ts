@@ -1,5 +1,6 @@
 import countries from "i18n-iso-countries";
 import type { BrandSummary } from "@/lib/data/brands";
+import { detectCountryFromName } from "@/lib/sync/detect";
 
 export type CountryShade = {
   color: string;
@@ -19,13 +20,21 @@ export function mapIdForCountry(alpha2: string | null | undefined): string | nul
   return numeric ? numeric.padStart(3, "0") : null;
 }
 
-type ShadingInput = Pick<BrandSummary, "name" | "slug" | "countryCode"> & { stage: Pick<BrandSummary["stage"], "name" | "color" | "sortOrder" | "isTerminal"> };
+type ShadingInput = Pick<BrandSummary, "name" | "slug" | "countryCode"> &
+  Partial<Pick<BrandSummary, "brandType" | "marketsCovered">> & { stage: Pick<BrandSummary["stage"], "name" | "color" | "sortOrder" | "isTerminal"> };
+
+/** Countries a brand puts on the map: its own country, or every market of a region brand. Niche brands have none. */
+function countryCodesFor(b: ShadingInput): string[] {
+  if (b.brandType === "region") return (b.marketsCovered ?? []).map((m) => detectCountryFromName(m)).filter((c): c is string => Boolean(c));
+  if (b.brandType === "niche") return [];
+  return b.countryCode ? [b.countryCode] : [];
+}
 
 /** Map ids → colour and brands for that country. */
 export function buildCountryShading(brands: ShadingInput[]): Record<string, CountryShade> {
   const out: Record<string, CountryShade> = {};
-  for (const b of brands) {
-    const key = mapIdForCountry(b.countryCode);
+  for (const b of brands) for (const code of countryCodesFor(b)) {
+    const key = mapIdForCountry(code);
     if (!key) continue;
     const entry = (out[key] ??= { color: b.stage.color, stageName: b.stage.name, rank: -1, brands: [] });
     entry.brands.push({ name: b.name, slug: b.slug, stageName: b.stage.name });

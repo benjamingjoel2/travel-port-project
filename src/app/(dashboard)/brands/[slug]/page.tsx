@@ -4,13 +4,14 @@ import { ExternalLinkIcon, GitBranchIcon, GlobeIcon, PencilIcon, TriangleIcon } 
 import { getBrandBySlug } from "@/lib/data/brands";
 import { getStages } from "@/lib/data/reference";
 import { getActor, canEdit } from "@/lib/auth";
-import { DESIGN_REFERENCE_LABELS, PRIORITY_LABELS } from "@/lib/constants";
+import { BRAND_TYPE_LABELS, DESIGN_REFERENCE_LABELS, PRIORITY_LABELS } from "@/lib/constants";
 import { formatDate, timeAgo } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BrandLogo } from "@/components/brand-logo";
 import { PriorityBadge } from "@/components/stage-badge";
+import { TypeBadge } from "@/components/type-badge";
 import { ProgressPill } from "@/components/progress-pill";
 import { PhaseList } from "@/components/phase-list";
 import { StageSelect } from "@/components/stage-select";
@@ -64,7 +65,13 @@ export default async function BrandDetailPage({ params }: PageProps<"/brands/[sl
             )}
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
-            <span>{brand.country}</span>
+            <TypeBadge type={brand.brandType} />
+            <span title={brand.brandType !== "country" ? brand.marketsCovered.join(", ") : undefined}>{brand.country}</span>
+            {brand.brandType !== "country" && brand.marketsCovered.length > 0 && (
+              <span>
+                · {brand.marketsCovered.length} {brand.brandType === "niche" ? "focus" : brand.marketsCovered.length === 1 ? "market" : "markets"}
+              </span>
+            )}
             {brand.region && <span>· {brand.region.name}</span>}
             <span>· {DESIGN_REFERENCE_LABELS[brand.designReference]}</span>
             {brand.owner && <span>· Owner: {brand.owner.name}</span>}
@@ -203,6 +210,10 @@ export default async function BrandDetailPage({ params }: PageProps<"/brands/[sl
               <CardTitle>About this brand</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-4 text-sm sm:grid-cols-2">
+              <Detail label="Brand type">{BRAND_TYPE_LABELS[brand.brandType]}</Detail>
+              <Detail label={brand.brandType === "niche" ? "Activity / focus" : "Markets covered"}>
+                {brand.marketsCovered.length === 0 ? "—" : brand.marketsCovered.join(", ")}
+              </Detail>
               <Detail label="Brand story">{brand.brandStory || "—"}</Detail>
               <Detail label="Palette notes">{brand.paletteNotes || "—"}</Detail>
               <Detail label="Design reference">

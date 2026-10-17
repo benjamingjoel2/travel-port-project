@@ -23,4 +23,14 @@ describe("map ids", () => {
     expect(s["404"].brands).toHaveLength(2);
     expect(s["064"].brands[0].name).toBe("C");
   });
+
+  it("shades every market of a region brand and nothing for a niche brand", () => {
+    const s = buildCountryShading([
+      { name: "Aravia", slug: "aravia", countryCode: null, brandType: "region", marketsCovered: ["United Arab Emirates", "Saudi Arabia", "Oman", "Qatar", "Jordan", "Bahrain", "Egypt"], stage: stage("Building", 40) },
+      { name: "Dive", slug: "dive", countryCode: "ID", brandType: "niche", marketsCovered: ["Scuba diving"], stage: stage("Idea", 10) },
+    ]);
+    for (const code of ["AE", "SA", "OM", "QA", "JO", "BH", "EG"]) expect(s[mapIdForCountry(code)!]?.brands[0].name, code).toBe("Aravia");
+    expect(s[mapIdForCountry("ID")!]).toBeUndefined();
+  });
 });
+

@@ -10,6 +10,14 @@ import { requireRole } from "@/lib/auth";
 import { countryByCode } from "@/lib/countries";
 import { syncNow } from "@/lib/sync";
 import { regionForCountry } from "@/lib/sync/regions";
+import { detectCountryFromName } from "@/lib/sync/detect";
+import { parseMarkets } from "@/lib/schemas/brand";
+
+function mostCommon(values: string[]): string | null {
+  const counts = new Map<string, number>();
+  for (const v of values) counts.set(v, (counts.get(v) ?? 0) + 1);
+  return [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+}
 import { slugify } from "@/lib/utils";
 
 type Result = { ok: true; message?: string } | { ok: false; error: string };
@@ -49,18 +57,41 @@ export async function setSyncItemStatus(itemId: string, status: "ignored" | "pen
   }
 }
 
-export async function addSyncItemAsBrand(itemId: string, countryCode: string): Promise<Result> {
+export type NewBrandFromSync =
+  | { brandType: "country"; countryCode: string }
+  | { brandType: "region" | "niche"; label: string; markets: string };
+
+export async function addSyncItemAsBrand(itemId: string, input: NewBrandFromSync): Promise<Result> {
   try {
     const actor = await requireRole("editor");
-    const code = z.string().regex(/^[A-Z]{2}$/, "Pick a country first.").safeParse(countryCode);
-    if (!code.success) return { ok: false, error: code.error.issues[0]?.message ?? "Pick a country first." };
+    let countryCode: string | null = null;
+    let place: string;
+    let markets: string[];
+    if (input.brandType === "country") {
+      const code = z.string().regex(/^[A-Z]{2}$/, "Pick a country first.").safeParse(input.countryCode);
+      if (!code.success) return { ok: false, error: code.error.issues[0]?.message ?? "Pick a country first." };
+      countryCode = code.data;
+      place = countryByCode(countryCode)?.name ?? countryCode;
+      markets = [place];
+    } else {
+      place = input.label.trim().slice(0, 120);
+      markets = parseMarkets(input.markets);
+      if (!place) return { ok: false, error: input.brandType === "region" ? "Name the region (e.g. East Africa)." : "Name the niche (e.g. Golf safaris)." };
+      if (markets.length === 0) return { ok: false, error: input.brandType === "region" ? "List the countries it covers." : "List the activity." };
+    }
     const db = await getDb();
     const item = await db.query.syncItems.findFirst({ where: eq(syncItems.id, itemId) });
     if (!item) return { ok: false, error: "That project is no longer in the list." };
     if (item.brandId) return { ok: false, error: "Already added." };
 
     const stage = (await db.query.pipelineStages.findFirst({ where: eq(pipelineStages.key, "building") })) ?? (await db.query.pipelineStages.findFirst());
-    const regionName = regionForCountry(code.data);
+    // Region brands land in the region most of their countries belong to.
+    const regionName =
+      input.brandType === "country"
+        ? regionForCountry(countryCode)
+        : input.brandType === "region"
+          ? mostCommon(markets.map((m) => regionForCountry(detectCountryFromName(m))).filter((r): r is string => Boolean(r)))
+          : null;
     let regionId: string | null = null;
     if (regionName) {
       const existing = await db.query.regions.findFirst({ where: eq(regions.name, regionName) });
@@ -74,8 +105,10 @@ export async function addSyncItemAsBrand(itemId: string, countryCode: string): P
       .values({
         name: item.name,
         slug,
-        country: countryByCode(code.data)?.name ?? code.data,
-        countryCode: code.data,
+        brandType: input.brandType,
+        country: place,
+        countryCode,
+        marketsCovered: markets,
         regionId,
         stageId: stage!.id,
         source: item.kind,
@@ -86,7 +119,7 @@ export async function addSyncItemAsBrand(itemId: string, countryCode: string): P
       .returning();
     await initializeBrandChildren(db, brand.id);
     await db.insert(activityLog).values({ brandId: brand.id, actorId: actor.id, actorName: actor.name, action: "brand_created", details: { name: item.name, source: "review list" } });
-    await db.update(syncItems).set({ status: "linked", brandId: brand.id, detectedCountryCode: code.data }).where(eq(syncItems.id, item.id));
+    await db.update(syncItems).set({ status: "linked", brandId: brand.id, detectedCountryCode: countryCode }).where(eq(syncItems.id, item.id));
     // Fill links and deploy info straight away.
     await syncNow();
     revalidateAll();

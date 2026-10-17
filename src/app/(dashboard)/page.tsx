@@ -2,7 +2,7 @@ import Link from "next/link";
 import { AlertTriangleIcon, ClockIcon } from "lucide-react";
 import { listBrands, getOpenBlockers } from "@/lib/data/brands";
 import { getStages, getRegions } from "@/lib/data/reference";
-import { GOAL_BRAND_COUNT, WAITING_ON_LABELS } from "@/lib/constants";
+import { BRAND_TYPES, BRAND_TYPE_LABELS, GOAL_BRAND_COUNT, WAITING_ON_LABELS } from "@/lib/constants";
 import { daysUntil, formatDate, timeAgo } from "@/lib/utils";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,6 +25,11 @@ export default async function OverviewPage() {
   const live = brands.filter((b) => b.stage.countsAsLive).length;
   const byStage = stages.map((s) => ({ stage: s, count: brands.filter((b) => b.stageId === s.id).length }));
   const byRegion = [...regions.map((r) => ({ name: r.name, count: brands.filter((b) => b.regionId === r.id).length })), { name: "No region", count: brands.filter((b) => !b.regionId).length }].filter((r) => r.count > 0);
+  const byType = BRAND_TYPES.map((t) => {
+    const list = brands.filter((b) => b.brandType === t);
+    return { type: t, count: list.length, live: list.filter((b) => b.stage.countsAsLive).length, markets: new Set(list.flatMap((b) => b.marketsCovered)).size };
+  });
+  const missingCountry = brands.filter((b) => b.brandType === "country" && !b.countryCode).length;
   const recent = [...brands].sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()).slice(0, 8);
   const shading = buildCountryShading(brands);
   const overdue = brands.filter((b) => b.targetLaunchDate && !b.stage.countsAsLive && !b.stage.isTerminal && (daysUntil(b.targetLaunchDate) ?? 1) < 0);
@@ -64,6 +69,18 @@ export default async function OverviewPage() {
             <div className="text-sm text-muted-foreground tabular-nums">{Math.round((live / GOAL_BRAND_COUNT) * 100)}%</div>
           </div>
           <Progress value={live} max={GOAL_BRAND_COUNT} className="h-3" indicatorClassName="bg-success" />
+          <div className="mt-2 grid grid-cols-3 gap-2 border-t pt-4">
+            {byType.map((t) => (
+              <Link key={t.type} href={`/brands?type=${t.type}`} className="rounded-md px-2 py-1.5 hover:bg-accent">
+                <div className="text-xs text-muted-foreground">{BRAND_TYPE_LABELS[t.type]} brands</div>
+                <div className="text-xl font-semibold tabular-nums">{t.count}</div>
+                <div className="text-xs text-muted-foreground tabular-nums">
+                  {t.live} live
+                  {t.type !== "country" && t.count > 0 && ` · ${t.markets} ${t.type === "niche" ? (t.markets === 1 ? "focus" : "focuses") : t.markets === 1 ? "market" : "markets"}`}
+                </div>
+              </Link>
+            ))}
+          </div>
         </CardContent>
       </Card>
 
@@ -72,7 +89,7 @@ export default async function OverviewPage() {
           <CardTitle>World map</CardTitle>
           <CardDescription>
             {Object.keys(shading).length} countries with a brand
-            {brands.some((b) => !b.countryCode) && ` · ${brands.filter((b) => !b.countryCode).length} brand(s) have no country set`}
+            {missingCountry > 0 && ` · ${missingCountry} brand(s) have no country set`}
           </CardDescription>
         </CardHeader>
         <CardContent>

@@ -48,6 +48,8 @@ export async function createBrand(_prev: BrandFormState, formData: FormData): Pr
     .values({
       name: v.name,
       slug,
+      brandType: v.brandType,
+      marketsCovered: v.marketsCovered,
       country: v.country,
       countryCode: v.countryCode ?? null,
       regionId: v.regionId ?? null,
@@ -97,6 +99,8 @@ export async function updateBrand(brandId: string, _prev: BrandFormState, formDa
     .set({
       name: v.name,
       slug,
+      brandType: v.brandType,
+      marketsCovered: v.marketsCovered,
       country: v.country,
       countryCode: v.countryCode ?? null,
       regionId: v.regionId ?? null,

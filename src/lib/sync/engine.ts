@@ -226,8 +226,10 @@ async function applyCandidates(db: Db, candidates: Candidate[], cfg: SyncConfig,
         .values({
           name,
           slug: uniqueSlug(slugify(name)),
+          brandType: "country",
           country: countryByCode(country)?.name ?? country,
           countryCode: country,
+          marketsCovered: [countryByCode(country)?.name ?? country],
           regionId: await regionId(country),
           stageId: buildingStage.id,
           source: c.kind,
@@ -266,9 +268,10 @@ async function applyCandidates(db: Db, candidates: Candidate[], cfg: SyncConfig,
       if (!brand.stagingUrl && c.vercel.stagingUrl) patch.stagingUrl = c.vercel.stagingUrl;
       if (!brand.productionDomain && c.vercel.customDomain) patch.productionDomain = withProtocol(c.vercel.customDomain);
     }
-    if (!brand.countryCode && country) {
+    if (!brand.countryCode && country && brand.brandType === "country") {
       patch.countryCode = country;
       if (!brand.regionId) patch.regionId = await regionId(country);
+      if (brand.marketsCovered.length === 0) patch.marketsCovered = [countryByCode(country)?.name ?? country];
     }
     const hasActivity = Boolean(c.vercel?.latest || c.github?.pushedAt);
     if (hasActivity && PRE_BUILD_STAGES.has(brand.stage.key) && buildingStage && brand.stage.id !== buildingStage.id) {

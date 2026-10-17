@@ -160,6 +160,7 @@ export async function seedDatabase(db: Db) {
           slug: slugify(b.name),
           country: b.country,
           countryCode: b.countryCode,
+          marketsCovered: [b.country],
           regionId: region?.id,
           stageId: stage.id,
           designReference: b.designReference,

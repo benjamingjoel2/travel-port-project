@@ -10,6 +10,7 @@ import { changeStage } from "@/lib/actions/brands";
 import { orderStagesForBoard, stageMoveBlockedReason } from "@/lib/pipeline";
 import { cn } from "@/lib/utils";
 import { BrandLogo } from "@/components/brand-logo";
+import { TypeBadge } from "@/components/type-badge";
 import { ProgressPill } from "@/components/progress-pill";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
@@ -121,7 +122,10 @@ function BrandCard({ brand, dragging, lastDragEnd }: { brand: BrandSummary; drag
         </Link>
         {brand.openBlockers > 0 && <span className="size-2 shrink-0 rounded-full bg-destructive" title={`${brand.openBlockers} open blocker(s)`} />}
       </div>
-      <div className="mt-1 text-xs text-muted-foreground">{brand.country}</div>
+      <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+        {brand.brandType !== "country" && <TypeBadge type={brand.brandType} className="px-1.5 py-0 text-[10px]" />}
+        <span className="truncate">{brand.country}</span>
+      </div>
       <div className="mt-2 flex items-center justify-between gap-2">
         <ProgressPill done={brand.phasesDone} total={brand.phasesTotal} title="Build phases" />
         <ProgressPill done={brand.checklistDone} total={brand.checklistTotal} title="Launch checklist" />
