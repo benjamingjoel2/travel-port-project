@@ -7,6 +7,7 @@ import { eq } from "drizzle-orm";
 import * as schema from "@/db/schema";
 import { seedDatabase, initializeBrandChildren } from "@/db/seed";
 import { applyDataPatches } from "@/db/patches";
+import { verifyPassword } from "@/lib/auth/password";
 import type { Db } from "@/db";
 import { runSync } from "@/lib/sync/engine";
 
@@ -46,13 +47,34 @@ describe("brand type", () => {
 
     await runSync(db, { vercelToken: "t", githubOwner: "benjamingjoel2", selfRepo: "benjamingjoel2/travel-port-project" }, {
       listVercelProjects: async () => ({ projects: [] }),
-      listGithubRepos: async () => [{ fullName: "benjamingjoel2/aravia", name: "aravia", htmlUrl: "https://github.com/benjamingjoel2/aravia", pushedAt: "2026-10-16T10:00:00Z", private: false }],
-      fetchRepoDocs: async () => "Luxury travel across the UAE, Saudi Arabia and Oman.",
+      listGithubRepos: async () =>
+        ["aravia", "extrafari"].map((name) => ({ fullName: `benjamingjoel2/${name}`, name, htmlUrl: `https://github.com/benjamingjoel2/${name}`, pushedAt: "2026-10-16T10:00:00Z", private: false })),
+      fetchRepoDocs: async (repo) => (repo.endsWith("aravia") ? "Luxury travel across the UAE, Saudi Arabia and Oman." : "Private safaris across Kenya, Tanzania, Uganda and Rwanda."),
     });
     b = await db.query.brands.findFirst({ where: eq(schema.brands.id, aravia.id), with: { region: true } });
     expect(b?.brandType).toBe("region");
     expect(b?.countryCode).toBeNull();
     expect(b?.marketsCovered).toEqual(["Oman"]);
     expect(await db.query.brands.findMany({ where: eq(schema.brands.name, "Aravia") })).toHaveLength(1);
+  });
+
+  it("adds Extrafari as an East Africa region brand even before auto-sync has seen it", async () => {
+    const all = await db.query.brands.findMany({ where: eq(schema.brands.githubRepo, "benjamingjoel2/extrafari"), with: { region: true } });
+    expect(all).toHaveLength(1);
+    expect(all[0].name).toBe("Extrafari");
+    expect(all[0].brandType).toBe("region");
+    expect(all[0].country).toBe("East Africa");
+    expect(all[0].countryCode).toBeNull();
+    expect(all[0].marketsCovered).toEqual(["Kenya", "Tanzania", "Uganda", "Rwanda"]);
+    expect(all[0].region?.name).toBe("East Africa");
+  });
+
+  it("gives Sevo Widodo a personal login", async () => {
+    const sevo = await db.query.teamMembers.findFirst({ where: eq(schema.teamMembers.name, "Sevo Widodo") });
+    expect(sevo?.active).toBe(true);
+    const login = await db.query.memberLogins.findFirst({ where: eq(schema.memberLogins.memberId, sevo!.id) });
+    expect(await verifyPassword("1234567890", login!.passwordHash)).toBe(true);
+    // The member row itself never carries the hash.
+    expect(Object.keys(sevo!)).not.toContain("passwordHash");
   });
 });

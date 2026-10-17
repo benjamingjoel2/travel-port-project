@@ -18,7 +18,7 @@ Private internal dashboard for the travel brand portfolio: where each of the ~10
 - Next.js (App Router) + TypeScript + Tailwind CSS, deployed on Vercel
 - Postgres via Drizzle ORM. Schema lives in `src/db/schema.ts`, SQL migrations in `drizzle/`
 - Zod for validation, Radix UI primitives for components
-- Login: one shared team password (`DASHBOARD_PASSWORD`), then each person picks their name so the activity log knows who did what
+- Login: one shared team password (`DASHBOARD_PASSWORD`), then each person picks their name so the activity log knows who did what. People can also have a **personal login** (name + their own password, e.g. Sevo Widodo): they go straight in as themselves, and nobody else can pick their name without that password. Personal passwords are stored hashed in the `member_logins` table.
 - Never indexed: login required, `robots.txt` disallows everything, every response carries `X-Robots-Tag: noindex`
 
 ## Hosting (Vercel)
@@ -30,7 +30,7 @@ Two one-time settings live in the Vercel project, not in this repo:
 1. **Database.** Project → *Storage* → *Create Database* → **Neon** → connect to build-tracker. This adds `DATABASE_URL` (the app also accepts `POSTGRES_URL`). Until it exists the app runs in **demo mode** (sample data, nothing saved). After adding it, *Deployments → Redeploy*. On first start the app creates its tables and loads the five starter brands.
 2. **Team password.** Project → *Settings → Environment Variables* → `DASHBOARD_PASSWORD`. Change it any time, then redeploy. `SESSION_SECRET` keeps everyone signed in across password changes.
 
-If Vercel's own login screen appears before the app's, turn it off under *Settings → Deployment Protection → Vercel Authentication*; the app has its own password gate.
+Vercel's own login screen (*Settings → Deployment Protection → Vercel Authentication*) is **off**, so anyone with the link reaches the tracker's sign-in page without a Vercel account. The tracker's own passwords protect the data.
 
 ## Auto-sync with Vercel and GitHub
 

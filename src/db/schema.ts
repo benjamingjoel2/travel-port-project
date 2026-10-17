@@ -67,6 +67,15 @@ export const teamMembers = pgTable("team_members", {
   ...timestamps,
 });
 
+/** Optional personal logins, kept apart from team_members so the hash is never loaded with a member. */
+export const memberLogins = pgTable("member_logins", {
+  memberId: uuid("member_id")
+    .primaryKey()
+    .references(() => teamMembers.id, { onDelete: "cascade" }),
+  passwordHash: text("password_hash").notNull(),
+  ...timestamps,
+});
+
 export const checklistTemplateItems = pgTable("checklist_template_items", {
   id: uuid("id").primaryKey().defaultRandom(),
   label: text("label").notNull(),

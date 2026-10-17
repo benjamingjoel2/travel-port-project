@@ -30,7 +30,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   return (
     <Shell>
       <h1 className="text-lg font-semibold">Build Tracker</h1>
-      <p className="mt-1 text-sm text-muted-foreground">Enter the team password to continue.</p>
+      <p className="mt-1 text-sm text-muted-foreground">Enter your name and password, or just the team password.</p>
       <LoginForm next={typeof next === "string" ? next : undefined} />
     </Shell>
   );
