@@ -221,6 +221,22 @@ export const notes = pgTable(
   (t) => [index("notes_brand_idx").on(t.brandId)],
 );
 
+/** Replies under a comment (one level, oldest first). */
+export const noteReplies = pgTable(
+  "note_replies",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    noteId: uuid("note_id")
+      .notNull()
+      .references(() => notes.id, { onDelete: "cascade" }),
+    authorId: uuid("author_id").references(() => teamMembers.id, { onDelete: "set null" }),
+    body: text("body").notNull(),
+    editedAt: timestamp("edited_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (t) => [index("note_replies_note_idx").on(t.noteId)],
+);
+
 export const blockers = pgTable(
   "blockers",
   {
@@ -328,10 +344,15 @@ export const promptsRelations = relations(prompts, ({ one }) => ({
   template: one(promptTemplates, { fields: [prompts.templateId], references: [promptTemplates.id] }),
   createdBy: one(teamMembers, { fields: [prompts.createdById], references: [teamMembers.id] }),
 }));
-export const notesRelations = relations(notes, ({ one }) => ({
+export const notesRelations = relations(notes, ({ one, many }) => ({
   brand: one(brands, { fields: [notes.brandId], references: [brands.id] }),
   author: one(teamMembers, { fields: [notes.authorId], references: [teamMembers.id] }),
   doneBy: one(teamMembers, { fields: [notes.doneById], references: [teamMembers.id] }),
+  replies: many(noteReplies),
+}));
+export const noteRepliesRelations = relations(noteReplies, ({ one }) => ({
+  note: one(notes, { fields: [noteReplies.noteId], references: [notes.id] }),
+  author: one(teamMembers, { fields: [noteReplies.authorId], references: [teamMembers.id] }),
 }));
 export const blockersRelations = relations(blockers, ({ one }) => ({
   brand: one(brands, { fields: [blockers.brandId], references: [brands.id] }),
@@ -354,6 +375,7 @@ export type BuildPhase = typeof buildPhases.$inferSelect;
 export type BrandChecklistItem = typeof brandChecklistItems.$inferSelect;
 export type Prompt = typeof prompts.$inferSelect;
 export type Note = typeof notes.$inferSelect;
+export type NoteReply = typeof noteReplies.$inferSelect;
 export type Blocker = typeof blockers.$inferSelect;
 export type ActivityEntry = typeof activityLog.$inferSelect;
 export type IntegrationSnapshot = typeof integrationSnapshots.$inferSelect;

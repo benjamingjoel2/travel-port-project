@@ -20,6 +20,8 @@ export function describe(entry: Pick<ActivityEntry, "action" | "details">): stri
       return `unticked "${d.label}"`;
     case "note_added":
       return d.preview ? `commented: "${d.preview}"` : "added a comment";
+    case "note_replied":
+      return d.preview ? `replied: "${d.preview}"` : "replied to a comment";
     case "note_edited":
       return "edited a comment";
     case "note_done":

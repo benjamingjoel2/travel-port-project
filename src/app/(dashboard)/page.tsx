@@ -80,6 +80,7 @@ export default async function OverviewPage() {
                   <span className="font-medium text-foreground">{c.brand.name}</span>
                   <span>
                     {c.author?.name ?? "Someone"} · {timeAgo(c.createdAt)}
+                    {c.replies.length > 0 && ` · ${c.replies.length} repl${c.replies.length === 1 ? "y" : "ies"}`}
                   </span>
                 </div>
                 <p className="line-clamp-2 whitespace-pre-wrap">{c.body}</p>

@@ -75,7 +75,7 @@ Every brand has a **brand type**:
 
 You can filter by type on the Brands table and the Pipeline board. The Overview shows the count per type. Auto-sync adds new projects as Country brands; switch the type on the brand's Edit page or when reviewing an unclear project in Settings.
 
-**Comments** (stored in the `notes` table): anyone signed in can comment on a brand from its *Comments & blockers* tab. The author or an owner can edit or delete a comment, and anyone can mark it done (or reopen it). Open comments show on the Overview, as a count on the Brands table and Pipeline cards, and in the brand's activity log.
+**Comments** (stored in the `notes` table): anyone signed in can comment on a brand from its *Comments & blockers* tab. The author or an owner can edit or delete a comment, and anyone can mark it done (or reopen it). Each comment has a **reply** thread (`note_replies` table); replies can be edited or deleted the same way and notify the other person through the bell. Open comments show on the Overview, as a count on the Brands table and Pipeline cards, and in the brand's activity log.
 
 **Notifications**: the bell next to *Build Tracker* in the sidebar shows what the other person did (comments, done/reopened, blockers, stage changes) plus projects auto-sync found. Your own actions never notify you. The red number is what's new since you last opened the bell; opening it marks everything read (stored per person in `team_members.notifications_seen_at`).
 

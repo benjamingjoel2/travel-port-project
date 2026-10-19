@@ -121,7 +121,11 @@ export async function getBrandBySlug(slug: string) {
       checklist: { orderBy: (c, { asc }) => [asc(c.sortOrder)] },
       prompts: { orderBy: (p, { desc }) => [desc(p.version)] },
       notes: {
-        with: { author: { columns: { id: true, name: true } }, doneBy: { columns: { id: true, name: true } } },
+        with: {
+          author: { columns: { id: true, name: true } },
+          doneBy: { columns: { id: true, name: true } },
+          replies: { with: { author: { columns: { id: true, name: true } } }, orderBy: (r, { asc }) => [asc(r.createdAt)] },
+        },
         orderBy: (n, { desc }) => [desc(n.createdAt)],
       },
       blockers: { orderBy: (b, { desc }) => [desc(b.openedAt)] },
@@ -158,7 +162,11 @@ export async function getOpenComments(limit = 20) {
   const db = await getDb();
   return db.query.notes.findMany({
     where: isNull(notes.doneAt),
-    with: { author: { columns: { id: true, name: true } }, brand: { columns: { name: true, slug: true, logoUrl: true, logoData: true } } },
+    with: {
+      author: { columns: { id: true, name: true } },
+      brand: { columns: { name: true, slug: true, logoUrl: true, logoData: true } },
+      replies: { columns: { id: true } },
+    },
     orderBy: [desc(notes.createdAt)],
     limit,
   });

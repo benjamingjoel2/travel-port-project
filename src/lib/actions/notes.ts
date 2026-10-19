@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "@/db";
-import { brands, notes } from "@/db/schema";
+import { brands, noteReplies, notes } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
 import type { ActionResult } from "./brands";
 import { logActivity } from "./activity";
@@ -90,6 +90,63 @@ export async function deleteNote(noteId: string): Promise<ActionResult> {
     if (note.authorId !== actor.id && actor.role !== "owner") return { ok: false, error: "Only the author or an owner can delete this comment." };
     await db.delete(notes).where(eq(notes.id, noteId));
     refresh(note.brand.slug);
+    return { ok: true };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+export async function addReply(noteId: string, body: string): Promise<ActionResult> {
+  try {
+    const actor = await requireRole("editor");
+    const parsed = bodySchema.safeParse(body);
+    if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid reply." };
+    const { db, note } = await findNote(noteId);
+    if (!note) return { ok: false, error: "Comment not found." };
+    const [reply] = await db.insert(noteReplies).values({ noteId, authorId: actor.id, body: parsed.data }).returning({ id: noteReplies.id });
+    await db.update(brands).set({ updatedAt: new Date() }).where(eq(brands.id, note.brandId));
+    await logActivity(db, note.brandId, actor, "note_replied", { preview: parsed.data.slice(0, 80), noteId, replyId: reply.id });
+    refresh(note.brand.slug);
+    return { ok: true };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+async function findReply(replyId: string) {
+  const db = await getDb();
+  const reply = await db.query.noteReplies.findFirst({
+    where: eq(noteReplies.id, replyId),
+    with: { note: { columns: { id: true, brandId: true }, with: { brand: { columns: { slug: true } } } } },
+  });
+  return { db, reply };
+}
+
+export async function updateReply(replyId: string, body: string): Promise<ActionResult> {
+  try {
+    const actor = await requireRole("editor");
+    const parsed = bodySchema.safeParse(body);
+    if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid reply." };
+    const { db, reply } = await findReply(replyId);
+    if (!reply) return { ok: false, error: "Reply not found." };
+    if (reply.authorId !== actor.id && actor.role !== "owner") return { ok: false, error: "Only the author or an owner can edit this reply." };
+    if (reply.body === parsed.data) return { ok: true };
+    await db.update(noteReplies).set({ body: parsed.data, editedAt: new Date(), updatedAt: new Date() }).where(eq(noteReplies.id, replyId));
+    refresh(reply.note.brand.slug);
+    return { ok: true };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+export async function deleteReply(replyId: string): Promise<ActionResult> {
+  try {
+    const actor = await requireRole("editor");
+    const { db, reply } = await findReply(replyId);
+    if (!reply) return { ok: false, error: "Reply not found." };
+    if (reply.authorId !== actor.id && actor.role !== "owner") return { ok: false, error: "Only the author or an owner can delete this reply." };
+    await db.delete(noteReplies).where(eq(noteReplies.id, replyId));
+    refresh(reply.note.brand.slug);
     return { ok: true };
   } catch (e) {
     return fail(e);
