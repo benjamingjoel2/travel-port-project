@@ -10,9 +10,10 @@ import world from "@/data/world-110m.json";
 // Bundled (about 100 KB) so the map paints with the page instead of after a fetch.
 const GEO = world as unknown as Parameters<typeof Geographies>[0]["geography"];
 
-type Hover = { x: number; y: number; name: string; shade?: CountryShade };
+type Hover = { x: number; y: number; name: string; shade?: CountryShade; plan?: string };
 
-export function WorldMap({ shading, stages }: { shading: Record<string, CountryShade>; stages: Pick<PipelineStage, "id" | "name" | "color">[] }) {
+/** `planned`: map id → a short note ("Wave 1 · Up next") for countries on the plan without a brand yet. */
+export function WorldMap({ shading, stages, planned }: { shading: Record<string, CountryShade>; stages: Pick<PipelineStage, "id" | "name" | "color">[]; planned?: Record<string, string> }) {
   const router = useRouter();
   const [hover, setHover] = useState<Hover | null>(null);
 
@@ -32,15 +33,16 @@ export function WorldMap({ shading, stages }: { shading: Record<string, CountryS
                 {geographies.map((geo) => {
                   const shade = shading[String(geo.id)];
                   const name = (geo.properties as { name?: string })?.name ?? "";
+                  const plan = shade ? undefined : planned?.[String(geo.id)];
                   return (
                     <Geography
                       key={geo.rsmKey}
                       geography={geo}
-                      onMouseMove={(e) => setHover({ x: e.clientX, y: e.clientY, name, shade })}
+                      onMouseMove={(e) => setHover({ x: e.clientX, y: e.clientY, name, shade, plan })}
                       onMouseLeave={() => setHover(null)}
                       onClick={() => open(name, shade)}
                       className={shade ? "cursor-pointer outline-none transition-opacity hover:opacity-80" : "outline-none"}
-                      style={{ fill: shade ? shade.color : "var(--map-land)", stroke: "var(--map-border)", strokeWidth: 0.6 }}
+                      style={{ fill: shade ? shade.color : plan ? "var(--map-planned)" : "var(--map-land)", stroke: "var(--map-border)", strokeWidth: 0.6 }}
                     />
                   );
                 })}
@@ -60,7 +62,7 @@ export function WorldMap({ shading, stages }: { shading: Record<string, CountryS
               </div>
             ))
           ) : (
-            <div className="text-muted-foreground">No brand yet</div>
+            <div className="text-muted-foreground">{hover.plan ? `Planned · ${hover.plan}` : "No brand yet"}</div>
           )}
         </div>
       )}
@@ -71,6 +73,11 @@ export function WorldMap({ shading, stages }: { shading: Record<string, CountryS
             <span className="size-2 rounded-full" style={{ backgroundColor: s.color }} /> {s.name}
           </span>
         ))}
+        {planned && Object.keys(planned).length > 0 && (
+          <span className="inline-flex items-center gap-1">
+            <span className="size-2 rounded-full" style={{ backgroundColor: "var(--map-planned)" }} /> Planned
+          </span>
+        )}
       </div>
     </div>
   );

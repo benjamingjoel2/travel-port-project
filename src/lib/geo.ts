@@ -20,11 +20,11 @@ export function mapIdForCountry(alpha2: string | null | undefined): string | nul
   return numeric ? numeric.padStart(3, "0") : null;
 }
 
-type ShadingInput = Pick<BrandSummary, "name" | "slug" | "countryCode"> &
+export type ShadingInput = Pick<BrandSummary, "name" | "slug" | "countryCode"> &
   Partial<Pick<BrandSummary, "brandType" | "marketsCovered">> & { stage: Pick<BrandSummary["stage"], "name" | "color" | "sortOrder" | "isTerminal"> };
 
 /** Countries a brand puts on the map: its own country, or every market of a region brand. Niche brands have none. */
-function countryCodesFor(b: ShadingInput): string[] {
+export function countryCodesFor(b: ShadingInput): string[] {
   if (b.brandType === "region") return (b.marketsCovered ?? []).map((m) => detectCountryFromName(m)).filter((c): c is string => Boolean(c));
   if (b.brandType === "niche") return [];
   return b.countryCode ? [b.countryCode] : [];

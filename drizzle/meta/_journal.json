@@ -50,6 +50,13 @@
       "when": 1792413561697,
       "tag": "0006_note_replies",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792522680940,
+      "tag": "0007_planned_countries",
+      "breakpoints": true
     }
   ]
 }

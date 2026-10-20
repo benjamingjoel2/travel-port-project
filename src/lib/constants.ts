@@ -1,4 +1,4 @@
-import type { BrandType, DesignReference, Priority, WaitingOn, PhaseStatus, MemberRole } from "@/db/schema";
+import type { BrandType, PlannedStatus, DesignReference, Priority, WaitingOn, PhaseStatus, MemberRole } from "@/db/schema";
 
 export const GOAL_BRAND_COUNT = 100;
 
@@ -68,3 +68,6 @@ export const BRAND_TYPE_LABELS: Record<BrandType, string> = { country: "Country"
 export const BRAND_TYPES = Object.keys(BRAND_TYPE_LABELS) as BrandType[];
 /** What the "country" field means for each brand type. */
 export const BRAND_TYPE_PLACE_LABELS: Record<BrandType, string> = { country: "Country", region: "Region name", niche: "Niche" };
+
+export const PLANNED_STATUS_LABELS: Record<PlannedStatus, string> = { up_next: "Up next", not_started: "Not started", skipped: "Skipped" };
+export const PLANNED_STATUSES = Object.keys(PLANNED_STATUS_LABELS) as PlannedStatus[];

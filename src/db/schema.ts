@@ -307,6 +307,22 @@ export const syncItems = pgTable("sync_items", {
   lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const plannedStatusEnum = pgEnum("planned_status", ["not_started", "up_next", "skipped"]);
+export type PlannedStatus = (typeof plannedStatusEnum.enumValues)[number];
+
+/** Countries the team plans to build a brand for next. Done-ness comes from the brands themselves. */
+export const plannedCountries = pgTable("planned_countries", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  countryCode: text("country_code").notNull().unique(),
+  /** Free label when the plan is narrower than the country, e.g. "Scotland". */
+  label: text("label"),
+  wave: integer("wave").notNull().default(1),
+  note: text("note"),
+  status: plannedStatusEnum("status").notNull().default("not_started"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  ...timestamps,
+});
+
 /** Small key/value store for app-wide state such as the last sync result. */
 export const appState = pgTable("app_state", {
   key: text("key").primaryKey(),
@@ -376,6 +392,7 @@ export type BrandChecklistItem = typeof brandChecklistItems.$inferSelect;
 export type Prompt = typeof prompts.$inferSelect;
 export type Note = typeof notes.$inferSelect;
 export type NoteReply = typeof noteReplies.$inferSelect;
+export type PlannedCountry = typeof plannedCountries.$inferSelect;
 export type Blocker = typeof blockers.$inferSelect;
 export type ActivityEntry = typeof activityLog.$inferSelect;
 export type IntegrationSnapshot = typeof integrationSnapshots.$inferSelect;

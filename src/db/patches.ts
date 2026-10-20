@@ -198,6 +198,52 @@ const PATCHES: { id: string; run: (db: Db) => Promise<void> }[] = [
         .where(and(eq(schema.syncItems.status, "pending"), or(inArray(schema.syncItems.repo, repos), inArray(schema.syncItems.name, names))));
     },
   },
+  {
+    // The "work on next" plan from the Country Tracker doc. Wave 1 starts as Up next.
+    id: "2026-10-20-planned-countries",
+    run: async (db) => {
+      const plan = [
+        { wave: 1, countryCode: "PE", label: null, note: "Machu Picchu; pairs with Mexico, Guatemala, Costa Rica" },
+        { wave: 1, countryCode: "MA", label: null, note: "Top North Africa demand; links Europe and Aravia" },
+        { wave: 1, countryCode: "TH", label: null, note: "Big tailor-made market" },
+        { wave: 1, countryCode: "VN", label: null, note: "Pairs with Thailand and Cambodia" },
+        { wave: 1, countryCode: "LK", label: null, note: "Same style of trip as Bhutan and India" },
+        { wave: 1, countryCode: "IT", label: null, note: "Strong high-spend demand" },
+        { wave: 1, countryCode: "GR", label: null, note: "Summer and honeymoon demand" },
+        { wave: 1, countryCode: "NZ", label: null, note: "First brand in Oceania" },
+        { wave: 2, countryCode: "AR", label: null, note: "Patagonia; Southern Hemisphere seasons" },
+        { wave: 2, countryCode: "CL", label: null, note: "Patagonia and Atacama; pairs with Argentina" },
+        { wave: 2, countryCode: "CO", label: null, note: "Fills out Latin America" },
+        { wave: 2, countryCode: "EC", label: "Ecuador (Gal\u00e1pagos)", note: "Gal\u00e1pagos is a stand-alone draw" },
+        { wave: 2, countryCode: "NP", label: null, note: "Sits between Bhutan and India" },
+        { wave: 2, countryCode: "KH", label: null, note: "Add-on to Vietnam and Thailand" },
+        { wave: 2, countryCode: "LA", label: null, note: "Add-on to Vietnam and Thailand" },
+        { wave: 2, countryCode: "NA", label: null, note: "Extrafari already sells it" },
+        { wave: 2, countryCode: "BW", label: null, note: "Extrafari already sells it" },
+        { wave: 2, countryCode: "ZW", label: null, note: "Victoria Falls; pairs with Zambia" },
+        { wave: 2, countryCode: "MU", label: null, note: "Beach add-on to safaris" },
+        { wave: 2, countryCode: "SC", label: null, note: "Honeymoon add-on to safaris" },
+        { wave: 2, countryCode: "MG", label: null, note: "Wildlife; near our East Africa brands" },
+        { wave: 3, countryCode: "ES", label: null, note: "Large market next to France and Portugal" },
+        { wave: 3, countryCode: "HR", label: null, note: "Coast and islands" },
+        { wave: 3, countryCode: "TR", label: null, note: "Bridges Europe and Aravia" },
+        { wave: 3, countryCode: "IE", label: null, note: "English-speaking market" },
+        { wave: 3, countryCode: "GB", label: "Scotland (UK)", note: "Highlands and whisky trips" },
+        { wave: 3, countryCode: "PH", label: null, note: "Islands; near Indonesia" },
+        { wave: 3, countryCode: "UZ", label: null, note: "Silk Road; near Mongolia" },
+        { wave: 3, countryCode: "GE", label: null, note: "Fast-growing destination" },
+        { wave: 3, countryCode: "GH", label: null, note: "Next to Benin" },
+        { wave: 3, countryCode: "SN", label: null, note: "French-speaking, like Benin" },
+        { wave: 3, countryCode: "BZ", label: null, note: "Next to Guatemala and Mexico" },
+        { wave: 3, countryCode: "PA", label: null, note: "Next to Costa Rica" },
+        { wave: 3, countryCode: "AU", label: null, note: "Pairs with New Zealand" },
+      ];
+      await db
+        .insert(schema.plannedCountries)
+        .values(plan.map((p, i) => ({ ...p, sortOrder: i + 1, status: p.wave === 1 ? ("up_next" as const) : ("not_started" as const) })))
+        .onConflictDoNothing();
+    },
+  },
 ];
 
 export async function applyDataPatches(db: Db) {

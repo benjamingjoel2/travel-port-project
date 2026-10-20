@@ -79,6 +79,8 @@ You can filter by type on the Brands table and the Pipeline board. The Overview 
 
 **Notifications**: the bell next to *Build Tracker* in the sidebar shows what the other person did (comments, done/reopened, blockers, stage changes) plus projects auto-sync found. Your own actions never notify you. The red number is what's new since you last opened the bell; opening it marks everything read (stored per person in `team_members.notifications_seen_at`).
 
+**Countries** (`/countries`): brands against the goal of 100, countries covered (own brand or a region brand's markets) and live, a map with planned countries shaded pink, the *Work on next* plan (`planned_countries` table: wave, why, status Up next / Not started / Skipped; a country shows its brand's stage automatically once a country brand for it exists), and every covered country with the brands behind it.
+
 Two flags on a stage drive the rules: `counts_as_live` feeds the "N / 100 live" number (Live and Migrated), and `requires_checklist` stops a brand entering that stage until every required checklist item is ticked.
 
 Roles: **owner** manages the team and settings, **editor** changes brands, **viewer** only looks.
