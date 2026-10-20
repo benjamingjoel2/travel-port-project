@@ -1,4 +1,4 @@
-import { eq, or, sql } from "drizzle-orm";
+import { and, eq, inArray, or, sql } from "drizzle-orm";
 import type { Db } from "./index";
 import * as schema from "./schema";
 import { initializeBrandChildren } from "./seed";
@@ -168,6 +168,34 @@ const PATCHES: { id: string; run: (db: Db) => Promise<void> }[] = [
         regionName: "East Africa",
         markets: ["Golf", "Safari"],
       });
+    },
+  },
+  {
+    // The team confirmed these waiting projects are not travel brands, or duplicate an existing one.
+    id: "2026-10-20-ignore-non-travel-and-duplicates",
+    run: async (db) => {
+      const repos = [
+        // Not travel brands
+        "benjamingjoel2/projectour",
+        "benjamingjoel2/persocal",
+        "benjamingjoel2/localhost.",
+        "benjamingjoel2/new",
+        "benjamingjoel2/empty",
+        "benjamingjoel2/grounder",
+        "benjamingjoel2/hyperlocal",
+        "benjamingjoel2/hyperporter",
+        "benjamingjoel2/main-hyperporter-2",
+        "benjamingjoel2/maxxing",
+        "benjamingjoel2/offness",
+        // Duplicates Sabbatical Portugal
+        "benjamingjoel2/sabbatical",
+      ];
+      // Vercel projects with no repo, matched by their listed name.
+      const names = ["Sc Verify", "Porto Season", "Porto Season Deps", "Ps Deps Cache", "Seventh Continent"];
+      await db
+        .update(schema.syncItems)
+        .set({ status: "ignored" })
+        .where(and(eq(schema.syncItems.status, "pending"), or(inArray(schema.syncItems.repo, repos), inArray(schema.syncItems.name, names))));
     },
   },
 ];
