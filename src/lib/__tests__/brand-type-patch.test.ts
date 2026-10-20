@@ -87,5 +87,43 @@ describe("brand type", () => {
     expect(await verifyPassword("1234567890", login!.passwordHash)).toBe(false);
     expect(await db.query.memberLogins.findMany()).toHaveLength(2);
   });
+
+  it("adds Brazil Adventure Club, Gustav and Safari Golf Tour, and sync links rather than duplicates them", async () => {
+    await runSync(db, { vercelToken: "t", githubOwner: "benjamingjoel2", selfRepo: "benjamingjoel2/travel-port-project" }, {
+      listVercelProjects: async () => ({
+        projects: [
+          {
+            id: "p_gustav",
+            name: "gustav",
+            repo: "benjamingjoel2/gustav-for-scandinavia",
+            repoUrl: "https://github.com/benjamingjoel2/gustav-for-scandinavia",
+            projectUrl: "https://vercel.com/team/gustav",
+            stagingUrl: "https://gustav.vercel.app",
+            customDomain: null,
+            production: null,
+            latest: null,
+            createdAt: 1,
+          },
+        ],
+      }),
+      listGithubRepos: async () =>
+        ["bac-concierge-", "gustav-for-scandinavia", "safari-golf-tour"].map((name) => ({ fullName: `benjamingjoel2/${name}`, name, htmlUrl: `https://github.com/benjamingjoel2/${name}`, pushedAt: "2026-10-16T10:00:00Z", private: true })),
+      fetchRepoDocs: async () => "",
+    });
+    const byName = async (name: string) => db.query.brands.findMany({ where: eq(schema.brands.name, name), with: { region: true } });
+    const [bac] = await byName("Brazil Adventure Club");
+    expect(bac).toMatchObject({ brandType: "country", country: "Brazil", countryCode: "BR", marketsCovered: ["Brazil"] });
+    expect(bac.region?.name).toBe("Latin America");
+    const gustav = await byName("Gustav");
+    expect(gustav).toHaveLength(1);
+    expect(gustav[0]).toMatchObject({ brandType: "region", country: "Scandinavia", countryCode: null, marketsCovered: ["Norway", "Sweden", "Denmark", "Finland"], vercelProjectId: "p_gustav" });
+    const [golf] = await byName("Safari Golf Tour");
+    expect(golf).toMatchObject({ brandType: "niche", country: "Golf safaris", countryCode: null });
+    for (const repo of ["bac-concierge-", "gustav-for-scandinavia", "safari-golf-tour"]) {
+      expect(await db.query.brands.findMany({ where: eq(schema.brands.githubRepo, `benjamingjoel2/${repo}`) }), repo).toHaveLength(1);
+    }
+    const waiting = await db.query.syncItems.findMany({ where: eq(schema.syncItems.status, "pending") });
+    expect(waiting.map((w) => w.repo)).not.toEqual(expect.arrayContaining(["benjamingjoel2/gustav-for-scandinavia"]));
+  });
 });
 

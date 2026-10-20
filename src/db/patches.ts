@@ -4,10 +4,29 @@ import * as schema from "./schema";
 import { initializeBrandChildren } from "./seed";
 import { slugify } from "@/lib/utils";
 
-/** Make a brand a region brand, creating it (from its GitHub repo) if auto-sync hasn't added it yet. */
-async function makeRegionBrand(db: Db, b: { name: string; repo: string; label: string; regionName: string; markets: string[] }) {
+type BrandSpec = {
+  name: string;
+  /** owner/repo, lower case, as auto-sync stores it. */
+  repo: string;
+  brandType: "country" | "region" | "niche";
+  /** Country name, region name or niche label. */
+  label: string;
+  countryCode?: string;
+  regionName: string;
+  markets: string[];
+};
+
+/** Set a brand's type and markets, creating it (from its GitHub repo) if auto-sync hasn't added it yet. */
+async function upsertBrand(db: Db, b: BrandSpec) {
   const region = await db.query.regions.findFirst({ where: eq(schema.regions.name, b.regionName) });
-  const values = { brandType: "region" as const, country: b.label, countryCode: null, marketsCovered: b.markets, regionId: region?.id ?? null, updatedAt: new Date() };
+  const values = {
+    brandType: b.brandType,
+    country: b.label,
+    countryCode: b.brandType === "country" ? (b.countryCode ?? null) : null,
+    marketsCovered: b.markets,
+    regionId: region?.id ?? null,
+    updatedAt: new Date(),
+  };
   let brand = await db.query.brands.findFirst({ where: or(eq(schema.brands.githubRepo, b.repo), sql`lower(${schema.brands.name}) = ${b.name.toLowerCase()}`) });
   if (brand) {
     await db.update(schema.brands).set(values).where(eq(schema.brands.id, brand.id));
@@ -22,9 +41,14 @@ async function makeRegionBrand(db: Db, b: { name: string; repo: string; label: s
       .values({ ...values, name: b.name, slug, stageId: stage.id, source: "github", githubRepo: b.repo, repoUrl: `https://github.com/${b.repo}`, designReference: "other" })
       .returning();
     await initializeBrandChildren(db, brand.id);
-    await db.insert(schema.activityLog).values({ brandId: brand.id, action: "brand_created", actorName: "Setup", details: { name: b.name, source: `Region brand (${b.label})` } });
+    await db.insert(schema.activityLog).values({ brandId: brand.id, action: "brand_created", actorName: "Setup", details: { name: b.name, source: `${b.brandType} brand (${b.label})` } });
   }
-  await db.update(schema.syncItems).set({ status: "linked", brandId: brand.id }).where(eq(schema.syncItems.key, `github:${b.repo}`));
+  // Its waiting projects (GitHub repo and any Vercel project built from it) now belong to this brand.
+  await db.update(schema.syncItems).set({ status: "linked", brandId: brand.id }).where(or(eq(schema.syncItems.key, `github:${b.repo}`), eq(schema.syncItems.repo, b.repo)));
+}
+
+function makeRegionBrand(db: Db, b: Omit<BrandSpec, "brandType">) {
+  return upsertBrand(db, { ...b, brandType: "region" });
 }
 
 /**
@@ -113,6 +137,37 @@ const PATCHES: { id: string; run: (db: Db) => Promise<void> }[] = [
     id: "2026-10-17-sevo-owner",
     run: async (db) => {
       await db.update(schema.teamMembers).set({ role: "owner", updatedAt: new Date() }).where(eq(schema.teamMembers.name, "Sevo Widodo"));
+    },
+  },
+  {
+    // Brands the team confirmed from the auto-sync review list.
+    id: "2026-10-20-bac-gustav-safari-golf",
+    run: async (db) => {
+      await upsertBrand(db, {
+        name: "Brazil Adventure Club",
+        repo: "benjamingjoel2/bac-concierge-",
+        brandType: "country",
+        label: "Brazil",
+        countryCode: "BR",
+        regionName: "Latin America",
+        markets: ["Brazil"],
+      });
+      await upsertBrand(db, {
+        name: "Gustav",
+        repo: "benjamingjoel2/gustav-for-scandinavia",
+        brandType: "region",
+        label: "Scandinavia",
+        regionName: "Europe",
+        markets: ["Norway", "Sweden", "Denmark", "Finland"],
+      });
+      await upsertBrand(db, {
+        name: "Safari Golf Tour",
+        repo: "benjamingjoel2/safari-golf-tour",
+        brandType: "niche",
+        label: "Golf safaris",
+        regionName: "East Africa",
+        markets: ["Golf", "Safari"],
+      });
     },
   },
 ];
