@@ -3,7 +3,9 @@
 import { useState } from "react";
 import { MinusIcon, PlusIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { ComposableMap, Geographies, Geography, ZoomableGroup } from "react-simple-maps";
+import { ComposableMap, Geographies, Geography, Marker, ZoomableGroup } from "react-simple-maps";
+import { geoArea, geoCentroid } from "d3-geo";
+import type { Feature, MultiPolygon, Polygon } from "geojson";
 import { cn } from "@/lib/utils";
 import type { CountryShade } from "@/lib/geo";
 import type { PipelineStage } from "@/db/schema";
@@ -23,6 +25,21 @@ const PRESETS: { label: string; view: View }[] = [
   { label: "Americas", view: { center: [-75, 10], zoom: 1.7 } },
 ];
 const MAX_ZOOM = 12;
+// Country names appear on countries with a brand once zoomed in this far.
+const LABEL_ZOOM = 2;
+
+/** Where to put a country's name: the middle of its largest piece (France's mainland, not French Guiana). */
+function labelPoint(geo: Feature<Polygon | MultiPolygon>): [number, number] {
+  if (geo.geometry.type !== "MultiPolygon") return geoCentroid(geo);
+  let best: Feature<Polygon> | null = null;
+  let bestArea = -1;
+  for (const coordinates of geo.geometry.coordinates) {
+    const part: Feature<Polygon> = { type: "Feature", properties: {}, geometry: { type: "Polygon", coordinates } };
+    const area = geoArea(part);
+    if (area > bestArea) [best, bestArea] = [part, area];
+  }
+  return geoCentroid(best ?? geo);
+}
 
 type Hover = { x: number; y: number; name: string; shade?: CountryShade; plan?: string };
 
@@ -53,6 +70,12 @@ export function WorldMap({ shading, stages, planned }: { shading: Record<string,
         >
         <Geographies geography={GEO}>
           {({ geographies }) => {
+            const labels =
+              view.zoom >= LABEL_ZOOM
+                ? geographies
+                    .filter((geo) => shading[String(geo.id)])
+                    .map((geo) => ({ id: String(geo.id), name: (geo.properties as { name?: string })?.name ?? "", at: labelPoint(geo as unknown as Feature<Polygon | MultiPolygon>) }))
+                : [];
             return (
               <>
                 {geographies.map((geo) => {
@@ -70,11 +93,28 @@ export function WorldMap({ shading, stages, planned }: { shading: Record<string,
                       style={{
                         fill: shade ? shade.color : plan ? "var(--map-planned)" : "var(--map-land)",
                         stroke: "var(--map-border)",
-                        strokeWidth: (shade || plan ? 0.3 : 0.6) / view.zoom,
+                        // Thin at world size so tiny countries keep their colour; clearer once zoomed so neighbours don't merge.
+                        strokeWidth: (shade || plan ? (view.zoom >= LABEL_ZOOM ? 1 : 0.3) : 0.6) / view.zoom,
                       }}
                     />
                   );
                 })}
+                {labels.map((l) => (
+                  <Marker key={`label-${l.id}`} coordinates={l.at} style={{ pointerEvents: "none" }}>
+                    <text
+                      textAnchor="middle"
+                      dy="0.35em"
+                      fontSize={11 / view.zoom}
+                      fontWeight={600}
+                      strokeWidth={3 / view.zoom}
+                      strokeLinejoin="round"
+                      className="fill-foreground stroke-card"
+                      style={{ paintOrder: "stroke", pointerEvents: "none" }}
+                    >
+                      {l.name}
+                    </text>
+                  </Marker>
+                ))}
               </>
             );
           }}
