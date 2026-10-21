@@ -11,7 +11,7 @@ import { StageBadge } from "@/components/stage-badge";
 import { BrandLogo } from "@/components/brand-logo";
 import { WorldMap } from "@/components/world-map";
 import { buildCountryShading } from "@/lib/geo";
-import { getSyncState, isSyncConfigured } from "@/lib/sync";
+import { getSyncState, isSyncConfigured, syncHealth } from "@/lib/sync";
 
 export const metadata = { title: "Overview" };
 
@@ -19,6 +19,7 @@ export default async function OverviewPage() {
   const [brands, stages, regions, blockers, sync, comments] = await Promise.all([listBrands(), getStages(), getRegions(), getOpenBlockers(), getSyncState(), getOpenComments(8)]);
   const openCommentCount = brands.reduce((n, b) => n + b.openComments, 0);
   const syncNote = isSyncConfigured() ? (sync.last ? ` Synced with Vercel and GitHub ${timeAgo(sync.last.at)}.` : " Syncing with Vercel and GitHub…") : "";
+  const health = syncHealth(sync);
   const live = brands.filter((b) => b.stage.countsAsLive).length;
   const byStage = stages.map((s) => ({ stage: s, count: brands.filter((b) => b.stageId === s.id).length }));
   const byRegion = [...regions.map((r) => ({ name: r.name, count: brands.filter((b) => b.regionId === r.id).length })), { name: "No region", count: brands.filter((b) => !b.regionId).length }].filter((r) => r.count > 0);
@@ -33,7 +34,19 @@ export default async function OverviewPage() {
 
   return (
     <>
-      <PageHeader title="Overview" description={`Where the portfolio stands today.${syncNote}`} />
+      <PageHeader
+        title="Overview"
+        description={
+          <>
+            Where the portfolio stands today.{syncNote}
+            {health && health.tone !== "ok" && (
+              <Link href="/settings" className={`ml-1 font-medium hover:underline ${health.tone === "error" ? "text-destructive" : "text-amber-700 dark:text-warning"}`}>
+                {health.text}
+              </Link>
+            )}
+          </>
+        }
+      />
 
       <Card className="mb-6">
         <CardContent className="flex flex-col gap-3">
