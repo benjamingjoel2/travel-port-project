@@ -125,5 +125,13 @@ describe("brand type", () => {
     const waiting = await db.query.syncItems.findMany({ where: eq(schema.syncItems.status, "pending") });
     expect(waiting.map((w) => w.repo)).not.toEqual(expect.arrayContaining(["benjamingjoel2/gustav-for-scandinavia"]));
   });
+
+  it("puts Switzerland on the countries plan, after the seeded countries", async () => {
+    const plan = await db.query.plannedCountries.findMany();
+    const ch = plan.find((p) => p.countryCode === "CH");
+    expect(ch).toMatchObject({ wave: 1, note: "Alps; next to France and Italy" });
+    expect(ch!.sortOrder).toBe(Math.max(...plan.map((p) => p.sortOrder)));
+    expect(plan).toHaveLength(35);
+  });
 });
 

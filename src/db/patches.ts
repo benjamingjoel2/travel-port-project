@@ -1,4 +1,4 @@
-import { and, eq, inArray, or, sql } from "drizzle-orm";
+import { and, eq, inArray, max, or, sql } from "drizzle-orm";
 import type { Db } from "./index";
 import * as schema from "./schema";
 import { initializeBrandChildren } from "./seed";
@@ -241,6 +241,17 @@ const PATCHES: { id: string; run: (db: Db) => Promise<void> }[] = [
       await db
         .insert(schema.plannedCountries)
         .values(plan.map((p, i) => ({ ...p, sortOrder: i + 1, status: p.wave === 1 ? ("up_next" as const) : ("not_started" as const) })))
+        .onConflictDoNothing();
+    },
+  },
+  {
+    // Switzerland was started before it was planned; the team added it to the plan.
+    id: "2026-10-21-plan-switzerland",
+    run: async (db) => {
+      const [{ value: last }] = await db.select({ value: max(schema.plannedCountries.sortOrder) }).from(schema.plannedCountries);
+      await db
+        .insert(schema.plannedCountries)
+        .values({ countryCode: "CH", wave: 1, note: "Alps; next to France and Italy", status: "up_next", sortOrder: (last ?? 0) + 1 })
         .onConflictDoNothing();
     },
   },
