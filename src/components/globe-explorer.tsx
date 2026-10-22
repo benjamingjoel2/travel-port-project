@@ -42,6 +42,11 @@ type View = { rotate: [number, number]; zoom: number };
 const HOME: View = { rotate: [-22, -18], zoom: 1 };
 const MIN_ZOOM = 0.8;
 const MAX_ZOOM = 14;
+// The globe turns slowly on its own (about one turn every 90 seconds) until someone touches it,
+// then waits a few seconds after the last touch before turning again.
+const SPIN_DEG_PER_MS = 0.004;
+const SPIN_IDLE_MS = 4000;
+const SPIN_MAX_ZOOM = 1.5;
 const clampZoom = (z: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
 const viewOn = ([lon, lat]: [number, number], zoom: number): View => ({ rotate: [-lon, -lat], zoom: clampZoom(zoom) });
 // Small countries need a closer look: Switzerland ends up near 10x, Kenya near 3.5x.
@@ -76,11 +81,31 @@ export function GlobeExplorer({ data, stages, actorName }: { data: MapData; stag
     return () => ro.disconnect();
   }, []);
 
+  // When anyone last dragged, zoomed, pointed at or flew the globe; spinning waits for a quiet spell.
+  const lastTouch = useRef(0);
+  const pointers = useRef(new Map<number, { x: number; y: number }>());
   function stopFlight() {
+    lastTouch.current = performance.now();
     if (anim.current !== null) cancelAnimationFrame(anim.current);
     anim.current = null;
   }
   useEffect(() => () => stopFlight(), []);
+
+  // Spin while nothing is picked, the globe is zoomed out and nobody has touched it for a moment.
+  useEffect(() => {
+    if (selected || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    let frame = 0;
+    let prev: number | null = null;
+    const tick = (now: number) => {
+      const dt = prev === null ? 0 : Math.min(100, now - prev);
+      prev = now;
+      const idle = now - lastTouch.current > SPIN_IDLE_MS && anim.current === null && pointers.current.size === 0;
+      if (idle && viewRef.current.zoom <= SPIN_MAX_ZOOM) setView((v) => ({ ...v, rotate: [v.rotate[0] + dt * SPIN_DEG_PER_MS, v.rotate[1]] }));
+      frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [selected]);
 
   function flyTo(target: View) {
     stopFlight();
@@ -125,7 +150,6 @@ export function GlobeExplorer({ data, stages, actorName }: { data: MapData; stag
   };
 
   // ---- dragging, pinching, wheel ----
-  const pointers = useRef(new Map<number, { x: number; y: number }>());
   const gesture = useRef<{ x: number; y: number; view: View; dist?: number; moved: boolean }>({ x: 0, y: 0, view: HOME, moved: false });
 
   const onPointerDown = (e: React.PointerEvent) => {
@@ -142,6 +166,7 @@ export function GlobeExplorer({ data, stages, actorName }: { data: MapData; stag
     };
   };
   const onPointerMove = (e: React.PointerEvent) => {
+    lastTouch.current = performance.now();
     if (!pointers.current.has(e.pointerId)) return;
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     const g = gesture.current;
