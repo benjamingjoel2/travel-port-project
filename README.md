@@ -52,6 +52,28 @@ Settings it reads (Vercel project → Settings → Environment Variables):
 | `GITHUB_TOKEN` | optional | GitHub token (read-only). Adds private repos and avoids GitHub's anonymous rate limit |
 | `CRON_SECRET` | yes, for the nightly run | Any long random string; Vercel Cron sends it automatically |
 
+## Agent API (Claude Code agents)
+
+The brand-building agents in the `jarvis` repo read and update the tracker through `/api/agent`. They act as a team member called **Claude**, created on first use with the editor role and no login. Everything they do shows in the activity log and the bell like anyone else's work. The UI's rules apply too: a brand can't enter Live or Migrated until every required checklist item is ticked.
+
+To turn it on, add `AGENT_API_TOKEN` (a long random string) to the Vercel project's environment variables and redeploy. Give the agents the same token as `TRACKER_TOKEN`. Without the variable the API answers 503. `AGENT_NAME` optionally renames the agent member.
+
+Every call sends `Authorization: Bearer $AGENT_API_TOKEN` and a JSON body:
+
+| Call | Body | Does |
+| --- | --- | --- |
+| `GET /api/agent/brands` | | Pipeline stages, and every brand with slug, stage key and progress |
+| `POST /api/agent/brands` | `name`, `country` (ISO code or name), optional `brandType`, `marketsCovered`, `stage` (default `named`), `brandStory`, `paletteNotes`, `designReference`, `priority`, `repoUrl` | Registers a new brand with its phases and checklist |
+| `GET /api/agent/brands/:slug` | | Brand brief: story, palette, phases, checklist (with ids), latest prompt, open comments and blockers, recent activity |
+| `PATCH /api/agent/brands/:slug` | any of `brandStory`, `paletteNotes`, `repoUrl`, `stagingUrl`, `productionDomain`, `designReferenceUrl`, `contentReferenceUrls` | Fills in text fields. Name, type and owner stay on the Edit page |
+| `POST /api/agent/brands/:slug/stage` | `stage` (key or name) | Moves the brand. Returns 409 with the open items if the checklist blocks the move |
+| `POST /api/agent/brands/:slug/phase` | `phase` (1–5), `status` (`not_started`, `in_progress`, `done`), optional `notes` | Updates a build phase |
+| `POST /api/agent/brands/:slug/checklist` | `item` (id or part of the label), optional `done`, `detail`, `note` | Ticks or annotates one checklist item. Returns 409 if the label matches several items |
+| `POST /api/agent/brands/:slug/blocker` | `description`, `waitingOn` (`me`, `team`, `claude_code`, `third_party`) | Opens a blocker |
+| `POST /api/agent/brands/:slug/resolve-blocker` | `id` | Resolves a blocker |
+| `POST /api/agent/brands/:slug/comment` | `body` | Posts a comment on the brand |
+| `POST /api/agent/brands/:slug/prompt` | `body`, optional `changeNotes` | Saves the next prompt version |
+
 ## Running locally
 
 ```bash
