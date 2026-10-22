@@ -1,3 +1,4 @@
+import { CompassIcon } from "lucide-react";
 import { asc, eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { memberLogins, teamMembers } from "@/db/schema";
@@ -38,8 +39,14 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
 
   return (
     <Shell>
-      <h1 className="text-lg font-semibold">Build Tracker</h1>
-      <p className="mt-1 text-sm text-muted-foreground">Pick your name and enter your password.</p>
+      <div className="flex flex-col items-center text-center">
+        <span className="flex size-11 items-center justify-center rounded-full bg-primary text-primary-foreground">
+          <CompassIcon className="size-5" />
+        </span>
+        <div className="mt-4 text-[11px] font-medium tracking-[0.16em] text-terra uppercase">Travel portfolio</div>
+        <h1 className="mt-1 font-serif text-3xl font-medium tracking-tight">Build Tracker</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Pick your name and enter your password.</p>
+      </div>
       <LoginForm people={people} next={typeof next === "string" ? next : undefined} />
     </Shell>
   );
@@ -47,8 +54,8 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
-      <div className="w-full max-w-sm rounded-xl border bg-card p-6 shadow-sm">{children}</div>
+    <main className="flex min-h-screen items-center justify-center bg-background p-4">
+      <div className="w-full max-w-sm rounded-2xl border bg-card p-8 shadow-[0_1px_2px_rgb(60_40_20/0.04),0_20px_48px_-24px_rgb(60_40_20/0.25)]">{children}</div>
     </main>
   );
 }

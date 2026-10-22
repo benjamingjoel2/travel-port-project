@@ -6,10 +6,10 @@ import { PLANNED_STATUS_LABELS } from "@/lib/constants";
 import { buildCountryShading, mapIdForCountry } from "@/lib/geo";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StageBadge } from "@/components/stage-badge";
 import { WorldMap } from "@/components/world-map";
+import { StatCard } from "@/components/stat-card";
 import { PlanTable } from "./plan-table";
 
 export const metadata = { title: "Countries" };
@@ -26,34 +26,22 @@ export default async function CountriesPage() {
   }
   const upNext = toDo.filter((p) => p.status === "up_next").length;
 
-  const stats = [
-    { label: "Brands", value: `${o.brandCount} / ${o.goal}`, sub: `${o.brandsLeft} left to reach ${o.goal}` },
-    { label: "Countries covered", value: o.covered.length, sub: "by a country or region brand" },
-    { label: "Countries live", value: o.liveCountries, sub: `${o.liveBrands} brand${o.liveBrands === 1 ? "" : "s"} live` },
-    { label: "On the plan", value: toDo.length, sub: `${upNext} up next` },
-  ];
 
   return (
     <>
       <PageHeader title="Countries" description="Where we have brands, and which countries to build next." />
 
-      <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {stats.map((s) => (
-          <Card key={s.label} className="py-4">
-            <CardContent>
-              <div className="text-xs text-muted-foreground">{s.label}</div>
-              <div className="text-2xl font-semibold tabular-nums">{s.value}</div>
-              <div className="text-xs text-muted-foreground">{s.sub}</div>
-            </CardContent>
-          </Card>
-        ))}
+      <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <StatCard label="Brands" value={o.brandCount} of={o.goal} note={`${o.brandsLeft} left to reach ${o.goal}`} />
+        <StatCard label="Countries covered" value={o.covered.length} note="by a country or region brand" />
+        <StatCard label="Countries live" value={o.liveCountries} note={`${o.liveBrands} brand${o.liveBrands === 1 ? "" : "s"} live`} />
+        <StatCard label="On the plan" value={toDo.length} note={`${upNext} up next`} href="#plan" />
       </div>
-      <Progress value={o.brandCount} max={o.goal} className="mb-6 h-2" />
 
       <Card className="mb-6">
         <CardHeader>
           <CardTitle>Map</CardTitle>
-          <CardDescription>Coloured by each country&apos;s furthest-along brand. Planned countries without a brand are shaded pink.</CardDescription>
+          <CardDescription>Coloured by each country&apos;s furthest-along brand. Planned countries without a brand are shaded lilac.</CardDescription>
         </CardHeader>
         <CardContent>
           <WorldMap shading={shading} stages={stages.filter((s) => !s.isTerminal)} planned={plannedOnMap} />

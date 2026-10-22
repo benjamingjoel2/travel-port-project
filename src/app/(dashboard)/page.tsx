@@ -10,6 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import { StageBadge } from "@/components/stage-badge";
 import { BrandLogo } from "@/components/brand-logo";
 import { WorldMap } from "@/components/world-map";
+import { StatCard } from "@/components/stat-card";
 import { buildCountryShading } from "@/lib/geo";
 import { getSyncState, isSyncConfigured, syncHealth } from "@/lib/sync";
 
@@ -32,13 +33,17 @@ export default async function OverviewPage() {
   const shading = buildCountryShading(brands);
   const overdue = brands.filter((b) => b.targetLaunchDate && !b.stage.countsAsLive && !b.stage.isTerminal && (daysUntil(b.targetLaunchDate) ?? 1) < 0);
 
+  const countries = Object.keys(shading).length;
+  const eyebrow = new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
+
   return (
     <>
       <PageHeader
-        title="Overview"
+        eyebrow={eyebrow}
+        title="The Portfolio"
         description={
           <>
-            Where the portfolio stands today.{syncNote}
+            {brands.length} brands across {countries} countries, {live} live.{syncNote}
             {health && health.tone !== "ok" && (
               <Link href="/settings" className={`ml-1 font-medium hover:underline ${health.tone === "error" ? "text-destructive" : "text-amber-700 dark:text-warning"}`}>
                 {health.text}
@@ -48,85 +53,39 @@ export default async function OverviewPage() {
         }
       />
 
-      <Card className="mb-6">
-        <CardContent className="flex flex-col gap-3">
-          <div className="flex items-end justify-between">
-            <div>
-              <div className="text-3xl font-semibold tabular-nums">
-                {live} <span className="text-lg font-normal text-muted-foreground">/ {GOAL_BRAND_COUNT} brands live</span>
-              </div>
-              <div className="mt-1 text-sm text-muted-foreground">{brands.length} brands in the tracker</div>
-            </div>
-            <div className="text-sm text-muted-foreground tabular-nums">{Math.round((live / GOAL_BRAND_COUNT) * 100)}%</div>
+      <Card className="mb-6 overflow-hidden pb-3">
+        <CardHeader className="flex-row items-end justify-between">
+          <div>
+            <CardTitle className="text-xl">Where we are</CardTitle>
+            <CardDescription className="mt-1">
+              {countries} countries with a brand
+              {missingCountry > 0 && ` · ${missingCountry} brand(s) have no country set`}
+            </CardDescription>
           </div>
-          <Progress value={live} max={GOAL_BRAND_COUNT} className="h-3" indicatorClassName="bg-success" />
-          <div className="mt-2 grid grid-cols-3 gap-2 border-t pt-4">
-            {byType.map((t) => (
-              <Link key={t.type} href={`/brands?type=${t.type}`} className="rounded-md px-2 py-1.5 hover:bg-accent">
-                <div className="text-xs text-muted-foreground">{BRAND_TYPE_LABELS[t.type]} brands</div>
-                <div className="text-xl font-semibold tabular-nums">{t.count}</div>
-                <div className="text-xs text-muted-foreground tabular-nums">
-                  {t.live} live
-                  {t.type !== "country" && t.count > 0 && ` · ${t.markets} ${t.type === "niche" ? (t.markets === 1 ? "focus" : "focuses") : t.markets === 1 ? "market" : "markets"}`}
-                </div>
-              </Link>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MessageSquareIcon className="size-4" /> Open comments
-            {openCommentCount > 0 && <span className="rounded-full bg-primary px-1.5 text-xs leading-5 text-primary-foreground tabular-nums">{openCommentCount}</span>}
-          </CardTitle>
-          <CardDescription>Comments on any brand that nobody has marked done yet.</CardDescription>
-        </CardHeader>
-        <CardContent className="divide-y">
-          {comments.length === 0 && <p className="text-sm text-muted-foreground">No open comments. Add one from a brand&apos;s Comments tab.</p>}
-          {comments.map((c) => (
-            <Link key={c.id} href={`/brands/${c.brand.slug}?tab=notes#comment-${c.id}`} className="flex items-start gap-3 py-2.5 text-sm hover:bg-accent/50">
-              <BrandLogo name={c.brand.name} logoUrl={c.brand.logoUrl} logoData={c.brand.logoData} size={28} />
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-baseline gap-x-2 text-xs text-muted-foreground">
-                  <span className="font-medium text-foreground">{c.brand.name}</span>
-                  <span>
-                    {c.author?.name ?? "Someone"} · {timeAgo(c.createdAt)}
-                    {c.replies.length > 0 && ` · ${c.replies.length} repl${c.replies.length === 1 ? "y" : "ies"}`}
-                  </span>
-                </div>
-                <p className="line-clamp-2 whitespace-pre-wrap">{c.body}</p>
-              </div>
-            </Link>
-          ))}
-          {openCommentCount > comments.length && <p className="pt-2 text-xs text-muted-foreground">+ {openCommentCount - comments.length} more on the brands&apos; Comments tabs</p>}
-        </CardContent>
-      </Card>
-
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>World map</CardTitle>
-          <CardDescription>
-            {Object.keys(shading).length} countries with a brand
-            {missingCountry > 0 && ` · ${missingCountry} brand(s) have no country set`}
-          </CardDescription>
         </CardHeader>
         <CardContent>
           <WorldMap shading={shading} stages={stages.filter((s) => !s.isTerminal)} />
         </CardContent>
       </Card>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <StatCard label="Brands" value={brands.length} of={GOAL_BRAND_COUNT} href="/brands" note={`${GOAL_BRAND_COUNT - brands.length > 0 ? GOAL_BRAND_COUNT - brands.length : 0} to go`} />
+        <StatCard label="Countries" value={countries} href="/countries" note="with a brand" />
+        <StatCard label="Live" value={live} href="/brands?stage=live" note={`${Math.round((live / GOAL_BRAND_COUNT) * 100)}% of the goal`} />
+        <StatCard label="Open comments" value={openCommentCount} href="#comments" note={blockers.length ? `${blockers.length} blocker${blockers.length === 1 ? "" : "s"} open` : "no blockers"} />
+      </div>
+
+      <div className="grid items-start gap-6 lg:grid-cols-3">
         <Card>
           <CardHeader>
             <CardTitle>Pipeline</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="space-y-1">
             {byStage.map(({ stage, count }) => (
-              <Link key={stage.id} href={`/brands?stage=${stage.key}`} className="flex items-center justify-between rounded-md px-1 py-0.5 text-sm hover:bg-accent">
-                <StageBadge stage={stage} className="border-transparent px-0" />
-                <span className="tabular-nums text-muted-foreground">{count}</span>
+              <Link key={stage.id} href={`/brands?stage=${stage.key}`} className="flex items-center gap-3 rounded-lg px-2 py-1.5 text-sm hover:bg-accent">
+                <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: stage.color }} />
+                <span className="flex-1">{stage.name}</span>
+                <span className="font-serif text-base tabular-nums">{count}</span>
               </Link>
             ))}
           </CardContent>
@@ -134,19 +93,36 @@ export default async function OverviewPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>By region</CardTitle>
+            <CardTitle>By brand type</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
-            {byRegion.length === 0 && <p className="text-sm text-muted-foreground">No brands yet.</p>}
-            {byRegion.map((r) => (
-              <div key={r.name} className="text-sm">
-                <div className="flex items-center justify-between">
-                  <span>{r.name}</span>
-                  <span className="tabular-nums text-muted-foreground">{r.count}</span>
-                </div>
-                <Progress value={r.count} max={brands.length || 1} className="mt-1 h-1.5" />
-              </div>
+          <CardContent className="space-y-1">
+            {byType.map((t) => (
+              <Link key={t.type} href={`/brands?type=${t.type}`} className="flex items-baseline justify-between rounded-lg px-2 py-2 hover:bg-accent">
+                <span>
+                  <span className="text-sm">{BRAND_TYPE_LABELS[t.type]}</span>
+                  <span className="ml-2 text-xs text-muted-foreground tabular-nums">
+                    {t.live} live
+                    {t.type !== "country" && t.count > 0 && ` · ${t.markets} ${t.type === "niche" ? (t.markets === 1 ? "focus" : "focuses") : t.markets === 1 ? "market" : "markets"}`}
+                  </span>
+                </span>
+                <span className="font-serif text-2xl tabular-nums">{t.count}</span>
+              </Link>
             ))}
+            <div className="mt-4 border-t pt-4">
+              <div className="mb-2 text-xs tracking-[0.12em] text-muted-foreground uppercase">By region</div>
+              {byRegion.length === 0 && <p className="text-sm text-muted-foreground">No brands yet.</p>}
+              <div className="space-y-2">
+                {byRegion.map((r) => (
+                  <div key={r.name} className="text-sm">
+                    <div className="flex items-center justify-between">
+                      <span>{r.name}</span>
+                      <span className="tabular-nums text-muted-foreground">{r.count}</span>
+                    </div>
+                    <Progress value={r.count} max={brands.length || 1} className="mt-1 h-1" indicatorClassName="bg-terra" />
+                  </div>
+                ))}
+              </div>
+            </div>
           </CardContent>
         </Card>
 
@@ -156,10 +132,10 @@ export default async function OverviewPage() {
               <AlertTriangleIcon className="size-4 text-destructive" /> Open blockers
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-4">
             {blockers.length === 0 && <p className="text-sm text-muted-foreground">Nothing is blocked. Nice.</p>}
             {blockers.slice(0, 8).map((b) => (
-              <div key={b.id} className="text-sm">
+              <div key={b.id} className="border-l-2 border-destructive/40 pl-3 text-sm">
                 <Link href={`/brands/${b.brand.slug}`} className="font-medium hover:underline">
                   {b.brand.name}
                 </Link>
@@ -172,22 +148,32 @@ export default async function OverviewPage() {
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-2">
+        <Card id="comments" className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>Recently updated</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <MessageSquareIcon className="size-4 text-terra" /> Open comments
+              {openCommentCount > 0 && <span className="rounded-full bg-terra px-2 font-sans text-xs leading-5 text-white tabular-nums">{openCommentCount}</span>}
+            </CardTitle>
+            <CardDescription>Comments on any brand that nobody has marked done yet.</CardDescription>
           </CardHeader>
           <CardContent className="divide-y">
-            {recent.map((b) => (
-              <Link key={b.id} href={`/brands/${b.slug}`} className="flex items-center gap-3 py-2 text-sm hover:bg-accent/50">
-                <BrandLogo name={b.name} logoUrl={b.logoUrl} logoData={b.logoData} size={28} />
+            {comments.length === 0 && <p className="text-sm text-muted-foreground">No open comments. Add one from a brand&apos;s Comments tab.</p>}
+            {comments.map((c) => (
+              <Link key={c.id} href={`/brands/${c.brand.slug}?tab=notes#comment-${c.id}`} className="-mx-2 flex items-start gap-3 rounded-lg px-2 py-3 text-sm hover:bg-accent/60">
+                <BrandLogo name={c.brand.name} logoUrl={c.brand.logoUrl} logoData={c.brand.logoData} size={30} />
                 <div className="min-w-0 flex-1">
-                  <div className="truncate font-medium">{b.name}</div>
-                  <div className="truncate text-xs text-muted-foreground">{b.country}</div>
+                  <div className="flex flex-wrap items-baseline gap-x-2 text-xs text-muted-foreground">
+                    <span className="font-medium text-foreground">{c.brand.name}</span>
+                    <span>
+                      {c.author?.name ?? "Someone"} · {timeAgo(c.createdAt)}
+                      {c.replies.length > 0 && ` · ${c.replies.length} repl${c.replies.length === 1 ? "y" : "ies"}`}
+                    </span>
+                  </div>
+                  <p className="mt-0.5 line-clamp-2 whitespace-pre-wrap">{c.body}</p>
                 </div>
-                <StageBadge stage={b.stage} />
-                <span className="w-16 text-right text-xs text-muted-foreground">{timeAgo(b.updatedAt)}</span>
               </Link>
             ))}
+            {openCommentCount > comments.length && <p className="pt-2 text-xs text-muted-foreground">+ {openCommentCount - comments.length} more on the brands&apos; Comments tabs</p>}
           </CardContent>
         </Card>
 
@@ -203,6 +189,25 @@ export default async function OverviewPage() {
               <Link key={b.id} href={`/brands/${b.slug}`} className="flex items-center justify-between text-sm hover:underline">
                 <span>{b.name}</span>
                 <span className="text-xs text-destructive">{formatDate(b.targetLaunchDate)}</span>
+              </Link>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card className="lg:col-span-3">
+          <CardHeader>
+            <CardTitle>Recently updated</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-x-8 divide-y sm:grid-cols-2 sm:divide-y-0">
+            {recent.map((b) => (
+              <Link key={b.id} href={`/brands/${b.slug}`} className="-mx-2 flex items-center gap-3 rounded-lg px-2 py-2.5 text-sm hover:bg-accent/60">
+                <BrandLogo name={b.name} logoUrl={b.logoUrl} logoData={b.logoData} size={30} />
+                <div className="min-w-0 flex-1">
+                  <div className="truncate font-medium">{b.name}</div>
+                  <div className="truncate text-xs text-muted-foreground">{b.country}</div>
+                </div>
+                <StageBadge stage={b.stage} />
+                <span className="w-16 text-right text-xs text-muted-foreground">{timeAgo(b.updatedAt)}</span>
               </Link>
             ))}
           </CardContent>

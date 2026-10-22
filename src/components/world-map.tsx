@@ -122,7 +122,7 @@ export function WorldMap({ shading, stages, planned }: { shading: Record<string,
         </ZoomableGroup>
       </ComposableMap>
 
-      <div className="absolute top-0 right-0 flex flex-col items-end gap-1.5">
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-1.5 sm:absolute sm:top-0 sm:right-0 sm:mt-0 sm:flex-col sm:items-end">
         <div className="flex overflow-hidden rounded-md border bg-card/90 text-xs shadow-xs backdrop-blur">
           {PRESETS.map((p) => (
             <button
