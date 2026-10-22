@@ -23,7 +23,7 @@ import { slugify } from "@/lib/utils";
 type Result = { ok: true; message?: string } | { ok: false; error: string };
 
 function revalidateAll() {
-  for (const p of ["/", "/brands", "/pipeline", "/settings"]) revalidatePath(p);
+  revalidatePath("/", "layout");
 }
 
 export async function runSyncNow(): Promise<Result> {

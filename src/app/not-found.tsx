@@ -7,7 +7,7 @@ export default function NotFound() {
       <h1 className="text-lg font-semibold">Not found</h1>
       <p className="text-sm text-muted-foreground">That page or brand doesn&apos;t exist.</p>
       <Button asChild variant="outline">
-        <Link href="/">Back to overview</Link>
+        <Link href="/">Back to the map</Link>
       </Button>
     </main>
   );

@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { ColumnsIcon, CompassIcon, FlagIcon, GlobeIcon, LayoutDashboardIcon, MenuIcon, SettingsIcon, SparklesIcon, XIcon } from "lucide-react";
+import { ColumnsIcon, CompassIcon, FlagIcon, GlobeIcon, LayoutDashboardIcon, MapIcon, MenuIcon, SettingsIcon, SparklesIcon, XIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
-const NAV = [
-  { href: "/", label: "Overview", icon: LayoutDashboardIcon },
+export const NAV = [
+  { href: "/", label: "Map", icon: MapIcon },
+  { href: "/overview", label: "Overview", icon: LayoutDashboardIcon },
   { href: "/pipeline", label: "Pipeline", icon: ColumnsIcon },
   { href: "/brands", label: "Brands", icon: GlobeIcon },
   { href: "/countries", label: "Countries", icon: FlagIcon },
