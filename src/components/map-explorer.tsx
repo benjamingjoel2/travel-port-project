@@ -7,7 +7,7 @@ import { geoArea, geoBounds, geoMercator, geoPath } from "d3-geo";
 import { feature } from "topojson-client";
 import type { FeatureCollection, MultiPolygon, Polygon } from "geojson";
 import type { GeometryCollection, Topology } from "topojson-specification";
-import { ArrowUpRightIcon, InfoIcon, LogOutIcon, MenuIcon, XIcon } from "lucide-react";
+import { ArrowUpRightIcon, InfoIcon, LogOutIcon, MenuIcon, MinusIcon, PlusIcon, XIcon } from "lucide-react";
 import world from "@/data/world-110m.json";
 import type { MapCountry, MapData, MapSearchBrand, MapStatus } from "@/lib/data/map";
 import { labelPoint, mainPart, type CountryShape } from "@/lib/map-shapes";
@@ -33,15 +33,18 @@ const DETAILED_URL = "/maps/countries-50m.json";
 const DETAIL_ZOOM = 2.2;
 
 // Starlink's map palette (Mapbox dark-v10 base, their availability colours and panels).
-const WATER = "#191a1a";
-const LAND = "#343332";
-const BORDER = "rgba(110, 110, 110, 0.5)";
+// Water and land a touch further apart than Mapbox dark-v10, and light borders on every country,
+// so neighbours in the same colour stay easy to tell apart.
+const WATER = "#141515";
+const LAND = "#3b3a39";
+const BORDER = "rgba(255, 255, 255, 0.22)";
+const BORDER_ON_COLOUR = "rgba(255, 255, 255, 0.45)";
 const PANEL = "rgba(39, 39, 40, 0.8)";
-const LABEL = "rgba(255, 255, 255, 0.5)";
+const LABEL = "rgba(255, 255, 255, 0.72)";
 const STATUS: Record<MapStatus, { label: string; color: string }> = {
-  live: { label: "Live", color: "#669eda" },
-  progress: { label: "In progress", color: "#3a6ea7" },
-  planned: { label: "Planned", color: "#1f3b59" },
+  live: { label: "Live", color: "#8cc4ff" },
+  progress: { label: "In progress", color: "#4a8bd4" },
+  planned: { label: "Planned", color: "#2b5683" },
 };
 
 // The view is a Mapbox-style camera: centre longitude, centre in Mercator units, and zoom
@@ -79,6 +82,16 @@ function fitBounds([[west, south], [east, north]]: [[number, number], [number, n
   const dx = pad.left + innerW / 2 - box.w / 2;
   const dy = pad.top + innerH / 2 - box.h / 2;
   return clampView({ lon: west + span / 2 - dx / sz / toRad, y: (y1 + y2) / 2 + dy / sz, z }, box);
+}
+
+/** Zoom by `dz` keeping the point under (px, py) still, the way Mapbox zooms toward the cursor. */
+function zoomAt(v: View, dz: number, px: number, py: number, b: Box): View {
+  const s = scaleOf(v.z);
+  const lonAt = v.lon + (px - b.w / 2) / s / toRad;
+  const yAt = v.y - (py - b.h / 2) / s;
+  const z = Math.min(MAX_ZOOM, v.z + dz);
+  const s2 = scaleOf(z);
+  return clampView({ lon: lonAt - (px - b.w / 2) / s2 / toRad, y: yAt + (py - b.h / 2) / s2, z }, b);
 }
 
 function boundsOf(shapes: Shape[]): [[number, number], [number, number]] {
@@ -180,16 +193,31 @@ export function MapExplorer({ data, stages, actorName }: { data: MapData; stages
     anim.current = requestAnimationFrame(step);
   }
 
-  /** Zoom by `dz` keeping the point under (px, py) still, the way Mapbox zooms toward the cursor. */
-  const zoomAround = (v: View, dz: number, px: number, py: number): View => {
+  const zoomAround = (v: View, dz: number, px: number, py: number) => zoomAt(v, dz, px, py, boxRef.current);
+  const zoomButton = (dz: number) => {
+    const v = viewRef.current;
     const b = boxRef.current;
-    const s = scaleOf(v.z);
-    const lonAt = v.lon + (px - b.w / 2) / s / toRad;
-    const yAt = v.y - (py - b.h / 2) / s;
-    const z = Math.min(MAX_ZOOM, v.z + dz);
-    const s2 = scaleOf(z);
-    return clampView({ lon: lonAt - (px - b.w / 2) / s2 / toRad, y: yAt + (py - b.h / 2) / s2, z }, b);
+    if (v) flyTo(zoomAt(v, dz, b.w / 2, b.h / 2, b));
   };
+
+  // Scroll, trackpad swipe and trackpad pinch all zoom the map. This listener can't be passive:
+  // a trackpad pinch arrives as a wheel event with Ctrl held, and without preventDefault the
+  // browser zooms the whole page instead of the map.
+  useEffect(() => {
+    const el = frame.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      if (anim.current !== null) cancelAnimationFrame(anim.current);
+      anim.current = null;
+      const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1;
+      const dz = Math.max(-1, Math.min(1, (-e.deltaY * unit) / (e.ctrlKey ? 100 : 220)));
+      const rect = el.getBoundingClientRect();
+      setView((v) => (v ? zoomAt(v, dz, e.clientX - rect.left, e.clientY - rect.top, boxRef.current) : v));
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []);
 
   // ---- projection ----
   const s = view ? scaleOf(view.z) : 1;
@@ -264,13 +292,6 @@ export function MapExplorer({ data, stages, actorName }: { data: MapData; stages
     // Lifting one finger of a pinch carries on as a drag from the other one.
     const rest = [...pointers.current.values()][0];
     if (rest) gesture.current = { x: rest.x, y: rest.y, view: viewRef.current, moved: true };
-  };
-  const onWheel = (e: React.WheelEvent) => {
-    stopFlight();
-    const v = viewRef.current;
-    if (!v) return;
-    const rect = (e.currentTarget as Element).getBoundingClientRect();
-    setView(zoomAround(v, -e.deltaY / 450, e.clientX - rect.left, e.clientY - rect.top));
   };
   const onDoubleClick = (e: React.MouseEvent) => {
     const v = viewRef.current;
@@ -352,7 +373,7 @@ export function MapExplorer({ data, stages, actorName }: { data: MapData; stages
 
   const z = view?.z ?? 0;
   // Country names grow with zoom like Mapbox's, and appear once a country is big enough on screen to hold one.
-  const labelSize = Math.min(16, Math.max(10, 9 + z * 1.2));
+  const labelSize = Math.min(16, Math.max(11, 10 + z * 1.2));
   const hovered = hover ? shapeById.get(hover.id) : undefined;
 
   return (
@@ -367,7 +388,6 @@ export function MapExplorer({ data, stages, actorName }: { data: MapData; stages
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
             onPointerCancel={onPointerUp}
-            onWheel={onWheel}
             onDoubleClick={onDoubleClick}
             onClick={(e) => e.target === e.currentTarget && !gesture.current.moved && setSelected(null)}
           >
@@ -379,8 +399,8 @@ export function MapExplorer({ data, stages, actorName }: { data: MapData; stages
                   key={x.id}
                   d={d}
                   fill={fillFor(x.id)}
-                  stroke={BORDER}
-                  strokeWidth={Math.min(2, Math.max(0.5, 0.5 + (z - 3) * 0.2))}
+                  stroke={data.countries[x.id] ? BORDER_ON_COLOUR : BORDER}
+                  strokeWidth={Math.min(1.8, 0.8 + Math.max(0, z - 2) * 0.2)}
                   strokeLinejoin="round"
                   className="transition-[fill] duration-300"
                   onClick={() => clickCountry(x.id)}
@@ -564,6 +584,16 @@ export function MapExplorer({ data, stages, actorName }: { data: MapData; stages
           Explore
         </button>
       </form>
+
+      {/* Zoom buttons, like Mapbox's navigation control */}
+      <div className="absolute right-4 bottom-[212px] flex flex-col overflow-hidden rounded-md sm:bottom-[90px]" style={{ backgroundColor: PANEL }}>
+        <button type="button" aria-label="Zoom in" onClick={() => zoomButton(1)} className="flex size-10 items-center justify-center hover:bg-white/10">
+          <PlusIcon className="size-5" />
+        </button>
+        <button type="button" aria-label="Zoom out" onClick={() => zoomButton(-1)} className="flex size-10 items-center justify-center border-t border-white/15 hover:bg-white/10">
+          <MinusIcon className="size-5" />
+        </button>
+      </div>
 
       <div className="pointer-events-none absolute bottom-2.5 left-2 text-[13px] font-bold tracking-[0.2em] text-white/80 uppercase">Build Tracker</div>
 
