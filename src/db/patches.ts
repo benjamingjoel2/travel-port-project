@@ -255,6 +255,30 @@ const PATCHES: { id: string; run: (db: Db) => Promise<void> }[] = [
         .onConflictDoNothing();
     },
   },
+  {
+    // Editorial redesign: earthy stage colours. Only stages still on the old default colour change.
+    id: "2026-10-22-earthy-stage-colours",
+    run: async (db) => {
+      const colours: [string, string, string][] = [
+        ["idea", "#9ca3af", "#a8a29e"],
+        ["named", "#a78bfa", "#9d84b7"],
+        ["prompt_ready", "#60a5fa", "#6f92b8"],
+        ["building", "#fbbf24", "#c8693f"],
+        ["in_review", "#fb923c", "#d9a441"],
+        ["staging", "#34d399", "#7fa58a"],
+        ["live", "#10b981", "#2f6e52"],
+        ["migrated", "#0ea5e9", "#3b6e8f"],
+        ["paused", "#d1d5db", "#c9c3b8"],
+        ["dropped", "#f87171", "#b45a52"],
+      ];
+      for (const [key, from, to] of colours) {
+        await db
+          .update(schema.pipelineStages)
+          .set({ color: to })
+          .where(and(eq(schema.pipelineStages.key, key), sql`lower(${schema.pipelineStages.color}) = ${from}`));
+      }
+    },
+  },
 ];
 
 export async function applyDataPatches(db: Db) {

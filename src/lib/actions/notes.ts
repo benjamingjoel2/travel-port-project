@@ -17,7 +17,7 @@ function fail(e: unknown): ActionResult {
 
 function refresh(slug: string) {
   revalidatePath(`/brands/${slug}`);
-  revalidatePath("/");
+  revalidatePath("/", "layout");
   revalidatePath("/brands");
   revalidatePath("/pipeline");
 }

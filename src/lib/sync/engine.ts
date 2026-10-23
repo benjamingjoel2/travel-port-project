@@ -133,8 +133,11 @@ export async function runSync(db: Db, cfg: SyncConfig, deps: SyncDeps): Promise<
 
   // One sync at a time across all server instances; a failure rolls the whole run back.
   await db.transaction(async (tx) => {
-    const res = (await tx.execute(sql`select pg_try_advisory_xact_lock(727102) as locked`)) as unknown as { rows: { locked: boolean }[] };
-    if (!res.rows[0]?.locked) {
+    // A run that is cut off mid-way must not hold the lock for ever: the database ends it after 2 idle minutes.
+    await tx.execute(sql`set local idle_in_transaction_session_timeout = '120s'`);
+    let locked = await trySyncLock(tx as unknown as Db);
+    if (!locked && (await clearStaleSyncLock(tx as unknown as Db))) locked = await trySyncLock(tx as unknown as Db);
+    if (!locked) {
       summary.skipped = true;
       return;
     }
@@ -145,6 +148,32 @@ export async function runSync(db: Db, cfg: SyncConfig, deps: SyncDeps): Promise<
   return summary;
 }
 
+const SYNC_LOCK = 727102;
+
+async function trySyncLock(db: Db): Promise<boolean> {
+  const res = (await db.execute(sql`select pg_try_advisory_xact_lock(${SYNC_LOCK}) as locked`)) as unknown as { rows: { locked: boolean }[] };
+  return Boolean(res.rows[0]?.locked);
+}
+
+/**
+ * A sync whose server was stopped mid-run can leave its connection open, idle and still
+ * holding the lock, so every later run is skipped and nothing new is ever added. End such a
+ * connection (idle inside a transaction for 2+ minutes) so the sync can go ahead.
+ */
+async function clearStaleSyncLock(db: Db): Promise<boolean> {
+  const res = (await db.execute(sql`
+    select pg_terminate_backend(a.pid) as ended
+    from pg_locks l join pg_stat_activity a on a.pid = l.pid
+    where l.locktype = 'advisory' and l.objid = ${SYNC_LOCK} and l.granted
+      and a.pid <> pg_backend_pid()
+      and a.state in ('idle in transaction', 'idle in transaction (aborted)')
+      and a.state_change < now() - interval '2 minutes'`)) as unknown as { rows: { ended: boolean }[] };
+  if (!res.rows.some((r) => r.ended)) return false;
+  // The lock is released as that connection closes.
+  await db.execute(sql`select pg_sleep(0.5)`);
+  return true;
+}
+
 async function applyCandidates(db: Db, candidates: Candidate[], cfg: SyncConfig, deps: SyncDeps, summary: SyncSummary) {
   /* ---- reference data ---- */
   const stages = await db.query.pipelineStages.findMany();
@@ -153,7 +182,7 @@ async function applyCandidates(db: Db, candidates: Candidate[], cfg: SyncConfig,
   const brands: BrandRow[] = await db.query.brands.findMany({ with: { stage: true } });
   const items = new Map((await db.query.syncItems.findMany()).map((i) => [i.key, i]));
 
-  const regionId = async (code: string | null) => {
+  const regionId = async (db: Db, code: string | null) => {
     const name = regionForCountry(code);
     if (!name) return null;
     let r = regions.find((x) => x.name === name);
@@ -173,16 +202,16 @@ async function applyCandidates(db: Db, candidates: Candidate[], cfg: SyncConfig,
     return slug;
   };
 
-  const log = (brandId: string, action: string, details: Record<string, unknown>) =>
+  const log = (db: Db, brandId: string, action: string, details: Record<string, unknown>) =>
     db.insert(schema.activityLog).values({ brandId, action, actorName: "Auto-sync", details });
 
   /* ---- process ---- */
-  for (const c of candidates) {
+  const applyCandidate = async (db: Db, c: Candidate) => {
     const existingItem = items.get(c.key);
     const now = new Date();
     if (existingItem?.status === "ignored") {
       await db.update(schema.syncItems).set({ lastSeenAt: now, name: humanize(c.rawName) }).where(eq(schema.syncItems.id, existingItem.id));
-      continue;
+      return;
     }
 
     // 1. Find the brand this project belongs to.
@@ -230,14 +259,14 @@ async function applyCandidates(db: Db, candidates: Candidate[], cfg: SyncConfig,
           country: countryByCode(country)?.name ?? country,
           countryCode: country,
           marketsCovered: [countryByCode(country)?.name ?? country],
-          regionId: await regionId(country),
+          regionId: await regionId(db, country),
           stageId: buildingStage.id,
           source: c.kind,
           designReference: "other",
         })
         .returning();
       await initializeBrandChildren(db, row.id);
-      await log(row.id, "brand_created", { name, source: c.kind === "vercel" ? "Vercel" : "GitHub" });
+      await log(db, row.id, "brand_created", { name, source: c.kind === "vercel" ? "Vercel" : "GitHub" });
       brand = { ...row, stage: buildingStage };
       brands.push(brand);
       summary.added.push(name);
@@ -248,7 +277,7 @@ async function applyCandidates(db: Db, candidates: Candidate[], cfg: SyncConfig,
       if (existingItem) await db.update(schema.syncItems).set(values).where(eq(schema.syncItems.id, existingItem.id));
       else items.set(c.key, (await db.insert(schema.syncItems).values(values).returning())[0]);
       summary.queued++;
-      continue;
+      return;
     }
 
     // 4. Link and fill gaps. Never overwrite what a person typed.
@@ -270,13 +299,13 @@ async function applyCandidates(db: Db, candidates: Candidate[], cfg: SyncConfig,
     }
     if (!brand.countryCode && country && brand.brandType === "country") {
       patch.countryCode = country;
-      if (!brand.regionId) patch.regionId = await regionId(country);
+      if (!brand.regionId) patch.regionId = await regionId(db, country);
       if (brand.marketsCovered.length === 0) patch.marketsCovered = [countryByCode(country)?.name ?? country];
     }
     const hasActivity = Boolean(c.vercel?.latest || c.github?.pushedAt);
     if (hasActivity && PRE_BUILD_STAGES.has(brand.stage.key) && buildingStage && brand.stage.id !== buildingStage.id) {
       patch.stageId = buildingStage.id;
-      await log(brand.id, "status_changed", { from: brand.stage.name, to: buildingStage.name, reason: "build activity detected" });
+      await log(db, brand.id, "status_changed", { from: brand.stage.name, to: buildingStage.name, reason: "build activity detected" });
       summary.advanced.push(brand.name);
     }
     if (Object.keys(patch).length) {
@@ -297,8 +326,25 @@ async function applyCandidates(db: Db, candidates: Candidate[], cfg: SyncConfig,
     const itemValues = { key: c.key, kind: c.kind, name: humanize(c.rawName), repo: c.repo, url: c.url, status: "linked", brandId: brand.id, detectedCountryCode: country, lastSeenAt: now };
     if (existingItem) await db.update(schema.syncItems).set(itemValues).where(eq(schema.syncItems.id, existingItem.id));
     else items.set(c.key, (await db.insert(schema.syncItems).values(itemValues).returning())[0]);
-  }
+  };
 
+  // Each project runs in its own savepoint: one that fails is skipped with a warning
+  // instead of rolling back (and, run after run, blocking) every other project.
+  for (const c of candidates) {
+    const before = { brands: brands.length, hadItem: items.has(c.key), added: summary.added.length, linked: summary.linked.length, advanced: summary.advanced.length, queued: summary.queued };
+    try {
+      await db.transaction((tx) => applyCandidate(tx as unknown as Db, c));
+    } catch (e) {
+      brands.length = before.brands;
+      if (!before.hadItem) items.delete(c.key);
+      summary.added.length = before.added;
+      summary.linked.length = before.linked;
+      summary.advanced.length = before.advanced;
+      summary.queued = before.queued;
+      const cause = e instanceof Error && e.cause instanceof Error ? e.cause.message : e instanceof Error ? e.message : String(e);
+      summary.warnings.push(`${humanize(c.rawName)}: ${cause.slice(0, 200)}`);
+    }
+  }
 }
 
 async function upsertSnapshot(db: Db, brandId: string, kind: string, data: Record<string, unknown>) {

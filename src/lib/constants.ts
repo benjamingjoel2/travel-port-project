@@ -21,16 +21,16 @@ export const DEFAULT_STAGES: {
   requiresChecklist?: boolean;
   isTerminal?: boolean;
 }[] = [
-  { key: "idea", name: "Idea", color: "#9ca3af" },
-  { key: "named", name: "Named", color: "#a78bfa" },
-  { key: "prompt_ready", name: "Prompt ready", color: "#60a5fa" },
-  { key: "building", name: "Building", color: "#fbbf24" },
-  { key: "in_review", name: "In review", color: "#fb923c" },
-  { key: "staging", name: "Staging", color: "#34d399" },
-  { key: "live", name: "Live", color: "#10b981", countsAsLive: true, requiresChecklist: true },
-  { key: "migrated", name: "Migrated to TravelPorts", color: "#0ea5e9", countsAsLive: true, requiresChecklist: true },
-  { key: "paused", name: "Paused", color: "#d1d5db", isTerminal: true },
-  { key: "dropped", name: "Dropped", color: "#f87171", isTerminal: true },
+  { key: "idea", name: "Idea", color: "#a8a29e" },
+  { key: "named", name: "Named", color: "#9d84b7" },
+  { key: "prompt_ready", name: "Prompt ready", color: "#6f92b8" },
+  { key: "building", name: "Building", color: "#c8693f" },
+  { key: "in_review", name: "In review", color: "#d9a441" },
+  { key: "staging", name: "Staging", color: "#7fa58a" },
+  { key: "live", name: "Live", color: "#2f6e52", countsAsLive: true, requiresChecklist: true },
+  { key: "migrated", name: "Migrated to TravelPorts", color: "#3b6e8f", countsAsLive: true, requiresChecklist: true },
+  { key: "paused", name: "Paused", color: "#c9c3b8", isTerminal: true },
+  { key: "dropped", name: "Dropped", color: "#b45a52", isTerminal: true },
 ];
 
 export const DEFAULT_REGIONS = ["Asia", "Latin America", "East Africa", "Southern Africa", "North Africa & Middle East", "Europe", "Oceania", "North America", "Caribbean"];

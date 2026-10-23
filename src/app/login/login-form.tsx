@@ -34,7 +34,7 @@ export function LoginForm({ people, next }: { people: { id: string; name: string
               }}
               className={cn(
                 "flex flex-col items-center gap-2 rounded-lg border p-3 text-sm font-medium transition-colors outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring",
-                memberId === p.id && "border-primary bg-accent ring-2 ring-primary",
+                memberId === p.id && "border-terra bg-accent ring-2 ring-terra/60",
               )}
             >
               <span className="flex size-10 items-center justify-center rounded-full bg-muted text-sm">
