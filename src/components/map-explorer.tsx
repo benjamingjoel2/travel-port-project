@@ -7,7 +7,7 @@ import { geoArea, geoBounds, geoMercator, geoPath } from "d3-geo";
 import { feature } from "topojson-client";
 import type { FeatureCollection, MultiPolygon, Polygon } from "geojson";
 import type { GeometryCollection, Topology } from "topojson-specification";
-import { ArrowUpRightIcon, InfoIcon, LogOutIcon, MenuIcon, MinusIcon, PlusIcon, XIcon } from "lucide-react";
+import { ArrowUpRightIcon, InfoIcon, LogOutIcon, MenuIcon, MinusIcon, PlusIcon, SearchIcon, XIcon } from "lucide-react";
 import world from "@/data/world-110m.json";
 import type { MapCountry, MapData, MapSearchBrand, MapStatus } from "@/lib/data/map";
 import { labelPoint, mainPart, type CountryShape } from "@/lib/map-shapes";
@@ -113,10 +113,11 @@ function boundsOf(shapes: Shape[]): [[number, number], [number, number]] {
   ];
 }
 
-// What Starlink opens on: the whole world on a computer; on a phone, the region we work in most.
+// Opens on the inhabited world (no Pacific gap or Antarctica) so countries are as big as possible;
+// on a phone, the region we work in most.
 const START_WIDE: [[number, number], [number, number]] = [
-  [-160, -70],
-  [170, 75],
+  [-125, -40],
+  [150, 70],
 ];
 const START_NARROW: [[number, number], [number, number]] = [
   [-20, -36],
@@ -303,7 +304,7 @@ export function MapExplorer({ data, stages, actorName }: { data: MapData; stages
   // ---- selecting ----
   const cardPad = (): Pad => {
     const b = boxRef.current;
-    return b.w < 640 ? { top: Math.round(b.h * 0.45), right: 32, bottom: 170, left: 32 } : { top: 110, right: 90, bottom: 190, left: 420 };
+    return b.w < 640 ? { top: Math.round(b.h * 0.45), right: 32, bottom: 60, left: 32 } : { top: 110, right: 90, bottom: 60, left: 420 };
   };
   const selectCountry = (id: string) => {
     const shape = shapeById.get(id);
@@ -328,6 +329,18 @@ export function MapExplorer({ data, stages, actorName }: { data: MapData; stages
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [searchShown, setSearchShown] = useState(false);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const typing = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
+      if (e.key === "/" && !typing) {
+        e.preventDefault();
+        setSearchShown(true);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
   const suggestions: Suggestion[] = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return [];
@@ -361,6 +374,7 @@ export function MapExplorer({ data, stages, actorName }: { data: MapData; stages
     sg.pick();
     setQuery(sg.label);
     setSearchOpen(false);
+    setSearchShown(false);
     (document.activeElement as HTMLElement | null)?.blur();
   };
 
@@ -438,7 +452,7 @@ export function MapExplorer({ data, stages, actorName }: { data: MapData; stages
       </div>
 
       {/* Top-left control panel */}
-      <div className="absolute top-4 right-[72px] left-4 sm:right-auto">
+      <div className="absolute top-4 right-[116px] left-4 sm:right-auto">
         <div className="rounded-md p-2 sm:flex sm:w-[618px] sm:items-center sm:gap-4" style={{ backgroundColor: PANEL }}>
           <div className="flex rounded-md bg-[#3f3f40] p-0.5 text-[13px] font-bold">
             {(["status", "stages"] as Mode[]).map((m) => (
@@ -486,35 +500,47 @@ export function MapExplorer({ data, stages, actorName }: { data: MapData; stages
         )}
       </div>
 
-      {/* Top-right: menu (where Starlink has its close button) */}
-      <div className="absolute top-4 right-4">
+      {/* Top-right: search and menu (where Starlink has its close button) */}
+      <div className="absolute top-4 right-4 flex items-start gap-2">
         <button
           type="button"
-          aria-label={menuOpen ? "Close menu" : "Open menu"}
-          onClick={() => setMenuOpen((v) => !v)}
+          aria-label={searchShown ? "Hide search" : "Search"}
+          title="Search (press /)"
+          onClick={() => setSearchShown((v) => !v)}
           className="flex size-10 items-center justify-center rounded-full hover:opacity-90"
-          style={{ backgroundColor: PANEL }}
+          style={{ backgroundColor: searchShown ? "rgba(255, 255, 255, 0.2)" : PANEL }}
         >
-          {menuOpen ? <XIcon className="size-5" /> : <MenuIcon className="size-5" />}
+          <SearchIcon className="size-[18px]" />
         </button>
-        {menuOpen && (
-          <nav className="absolute top-12 right-0 w-56 overflow-hidden rounded-md py-1.5 text-sm backdrop-blur" style={{ backgroundColor: "rgba(39, 39, 40, 0.92)" }}>
-            {NAV.filter((n) => n.href !== "/").map((n) => (
-              <Link key={n.href} href={n.href} className="flex items-center gap-3 px-4 py-2 text-white/85 hover:bg-white/10 hover:text-white">
-                <n.icon className="size-4 text-white/50" />
-                {n.label}
-              </Link>
-            ))}
-            <div className="mt-1.5 flex items-center justify-between border-t border-white/10 px-4 pt-2.5 pb-1">
-              <span className="truncate text-xs text-white/60">{actorName}</span>
-              <form action={signOut}>
-                <button type="submit" className="flex items-center gap-1.5 text-xs text-white/60 hover:text-white">
-                  <LogOutIcon className="size-3.5" /> Sign out
-                </button>
-              </form>
-            </div>
-          </nav>
-        )}
+        <div className="relative">
+          <button
+            type="button"
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
+            onClick={() => setMenuOpen((v) => !v)}
+            className="flex size-10 items-center justify-center rounded-full hover:opacity-90"
+            style={{ backgroundColor: PANEL }}
+          >
+            {menuOpen ? <XIcon className="size-5" /> : <MenuIcon className="size-5" />}
+          </button>
+          {menuOpen && (
+            <nav className="absolute top-12 right-0 w-56 overflow-hidden rounded-md py-1.5 text-sm backdrop-blur" style={{ backgroundColor: "rgba(39, 39, 40, 0.92)" }}>
+              {NAV.filter((n) => n.href !== "/").map((n) => (
+                <Link key={n.href} href={n.href} className="flex items-center gap-3 px-4 py-2 text-white/85 hover:bg-white/10 hover:text-white">
+                  <n.icon className="size-4 text-white/50" />
+                  {n.label}
+                </Link>
+              ))}
+              <div className="mt-1.5 flex items-center justify-between border-t border-white/10 px-4 pt-2.5 pb-1">
+                <span className="truncate text-xs text-white/60">{actorName}</span>
+                <form action={signOut}>
+                  <button type="submit" className="flex items-center gap-1.5 text-xs text-white/60 hover:text-white">
+                    <LogOutIcon className="size-3.5" /> Sign out
+                  </button>
+                </form>
+              </div>
+            </nav>
+          )}
+        </div>
       </div>
 
       {selected && (
@@ -529,64 +555,70 @@ export function MapExplorer({ data, stages, actorName }: { data: MapData; stages
         />
       )}
 
-      {/* Address-style search, as on Starlink */}
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          pick(suggestions[active] ?? suggestions[0]);
-        }}
-        className="absolute bottom-[84px] left-1/2 flex w-[calc(100%-64px)] max-w-[800px] -translate-x-1/2 flex-col gap-2 sm:bottom-[90px] sm:w-[calc(100%-64px)] sm:flex-row sm:gap-5"
-      >
-        <div className="relative flex-1">
-          {searchOpen && suggestions.length > 0 && (
-            <ul role="listbox" className="absolute right-0 bottom-full left-0 mb-2 overflow-hidden rounded-[2px] border border-[#3a3a3a] bg-[#141414] py-1">
-              {suggestions.map((sg, i) => (
-                <li key={sg.key} role="option" aria-selected={i === active}>
-                  <button
-                    type="button"
-                    onMouseDown={(e) => e.preventDefault()}
-                    onMouseEnter={() => setActive(i)}
-                    onClick={() => pick(sg)}
-                    className={cn("flex w-full items-center gap-3 px-4 py-2.5 text-left", i === active && "bg-white/10")}
-                  >
-                    <span className="size-3 shrink-0 rounded-[2px]" style={{ backgroundColor: sg.color }} />
-                    <span className="flex-1 truncate text-[15px]">{sg.label}</span>
-                    <span className="truncate text-xs text-white/55">{sg.detail}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-          <input
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              setActive(0);
-              setSearchOpen(true);
-            }}
-            onFocus={() => setSearchOpen(true)}
-            onBlur={() => setSearchOpen(false)}
-            onKeyDown={(e) => {
-              if (e.key === "ArrowDown") {
-                e.preventDefault();
-                setActive((i) => Math.min(suggestions.length - 1, i + 1));
-              } else if (e.key === "ArrowUp") {
-                e.preventDefault();
-                setActive((i) => Math.max(0, i - 1));
-              } else if (e.key === "Escape") setSearchOpen(false);
-            }}
-            placeholder="Country or brand"
-            aria-label="Search for a country or brand"
-            className="h-14 w-full rounded-[2px] border border-[#3a3a3a] bg-[#141414] px-4 text-[16px] text-white placeholder:text-white/50 focus:border-white/60 focus:outline-none"
-          />
-        </div>
-        <button type="submit" className="h-12 rounded-[2px] bg-[#efefef] px-9 text-[15px] font-semibold text-black hover:bg-white sm:h-14 sm:w-[140px] sm:px-0">
-          Explore
-        </button>
-      </form>
+      {/* Search stays hidden so the map has the whole screen; the magnifier (or /) brings it up. */}
+      {searchShown && (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            pick(suggestions[active] ?? suggestions[0]);
+          }}
+          className="absolute bottom-8 left-1/2 flex w-[calc(100%-64px)] max-w-[800px] -translate-x-1/2 flex-col gap-2 sm:bottom-10 sm:w-[calc(100%-64px)] sm:flex-row sm:gap-5"
+        >
+          <div className="relative flex-1">
+            {searchOpen && suggestions.length > 0 && (
+              <ul role="listbox" className="absolute right-0 bottom-full left-0 mb-2 overflow-hidden rounded-[2px] border border-[#3a3a3a] bg-[#141414] py-1">
+                {suggestions.map((sg, i) => (
+                  <li key={sg.key} role="option" aria-selected={i === active}>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onMouseEnter={() => setActive(i)}
+                      onClick={() => pick(sg)}
+                      className={cn("flex w-full items-center gap-3 px-4 py-2.5 text-left", i === active && "bg-white/10")}
+                    >
+                      <span className="size-3 shrink-0 rounded-[2px]" style={{ backgroundColor: sg.color }} />
+                      <span className="flex-1 truncate text-[15px]">{sg.label}</span>
+                      <span className="truncate text-xs text-white/55">{sg.detail}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <input
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setActive(0);
+                setSearchOpen(true);
+              }}
+              onFocus={() => setSearchOpen(true)}
+              onBlur={() => setSearchOpen(false)}
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === "ArrowDown") {
+                  e.preventDefault();
+                  setActive((i) => Math.min(suggestions.length - 1, i + 1));
+                } else if (e.key === "ArrowUp") {
+                  e.preventDefault();
+                  setActive((i) => Math.max(0, i - 1));
+                } else if (e.key === "Escape") {
+                  setSearchOpen(false);
+                  setSearchShown(false);
+                }
+              }}
+              placeholder="Country or brand"
+              aria-label="Search for a country or brand"
+              className="h-14 w-full rounded-[2px] border border-[#3a3a3a] bg-[#141414] px-4 text-[16px] text-white placeholder:text-white/50 focus:border-white/60 focus:outline-none"
+            />
+          </div>
+          <button type="submit" className="h-12 rounded-[2px] bg-[#efefef] px-9 text-[15px] font-semibold text-black hover:bg-white sm:h-14 sm:w-[140px] sm:px-0">
+            Explore
+          </button>
+        </form>
+      )}
 
       {/* Zoom buttons, like Mapbox's navigation control */}
-      <div className="absolute right-4 bottom-[212px] flex flex-col overflow-hidden rounded-md sm:bottom-[90px]" style={{ backgroundColor: PANEL }}>
+      <div className="absolute right-4 bottom-10 flex flex-col overflow-hidden rounded-md" style={{ backgroundColor: PANEL }}>
         <button type="button" aria-label="Zoom in" onClick={() => zoomButton(1)} className="flex size-10 items-center justify-center hover:bg-white/10">
           <PlusIcon className="size-5" />
         </button>
