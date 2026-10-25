@@ -13,7 +13,7 @@ function revalidateBrand(slug: string) {
   revalidatePath(`/brands/${slug}`);
   revalidatePath("/brands");
   revalidatePath("/pipeline");
-  revalidatePath("/");
+  revalidatePath("/", "layout");
 }
 
 export async function setChecklistDone(itemId: string, done: boolean): Promise<ActionResult> {

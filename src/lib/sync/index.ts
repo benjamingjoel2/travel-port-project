@@ -25,7 +25,12 @@ export function isSyncConfigured(cfg = getSyncConfig()) {
   return Boolean(cfg.vercelToken || cfg.githubOwner);
 }
 
-type StoredState = { lastAttemptAt?: string; last?: SyncSummary };
+type StoredState = {
+  lastAttemptAt?: string;
+  last?: SyncSummary;
+  /** Set when a run found another one holding the lock; cleared by the next completed run. */
+  skippedSince?: string;
+};
 
 const REPO_CACHE_KEY = "github_repos";
 /** The full GitHub repo list is fetched at most this often; recent repos come from Vercel every run. */
@@ -56,6 +61,8 @@ async function listGithubReposCached(owner: string, token?: string): Promise<Git
     throw e;
   }
 }
+
+export type SyncState = StoredState;
 
 export async function getSyncState(): Promise<StoredState> {
   const db = await getDb();
@@ -90,8 +97,13 @@ export async function syncNow(): Promise<SyncSummary> {
     console.log(
       `[auto-sync] ${summary.skipped ? "skipped (another run in progress)" : summary.ok ? "ok" : "FAILED"} vercel=${summary.vercelProjects} repos=${summary.githubRepos} added=[${summary.added.join(", ")}] linked=[${summary.linked.join(", ")}] queued=${summary.queued}${summary.warnings.length ? ` warnings=${summary.warnings.join(" | ")}` : ""}${summary.error ? ` error=${summary.error}` : ""} ${summary.durationMs}ms`,
     );
-    // A skipped run means another instance is syncing right now; keep its result.
-    if (!summary.skipped) await saveState({ last: summary });
+    // A skipped run means another instance is syncing right now; keep its result, but note
+    // when skipping started so a lock that never frees shows up on the Overview.
+    if (!summary.skipped) await saveState({ last: summary, skippedSince: undefined });
+    else {
+      const state = await getSyncState();
+      if (!state.skippedSince) await saveState({ skippedSince: summary.at });
+    }
     return summary;
   })().finally(() => {
     running = null;
@@ -108,4 +120,19 @@ export async function maybeSync(): Promise<void> {
   const last = state.lastAttemptAt ? Date.parse(state.lastAttemptAt) : 0;
   if (Date.now() - last < SYNC_INTERVAL_MS) return;
   await syncNow();
+}
+
+export type SyncHealth = { tone: "ok" | "warn" | "error"; text: string };
+
+/** One line on how auto-sync is doing, for the Overview header. */
+export function syncHealth(state: StoredState, now = Date.now()): SyncHealth | null {
+  if (!isSyncConfigured()) return null;
+  const last = state.last;
+  if (!last) return { tone: "ok", text: "Syncing with Vercel and GitHub…" };
+  const lastAt = Date.parse(last.at);
+  const stuckFor = state.skippedSince ? now - Date.parse(state.skippedSince) : 0;
+  if (stuckFor > 10 * 60 * 1000) return { tone: "error", text: `Auto-sync is stuck: no run has finished since ${new Date(lastAt).toUTCString()}. See Settings.` };
+  if (!last.ok) return { tone: "error", text: `Auto-sync failed: ${last.error ?? "unknown error"}. See Settings.` };
+  if (last.warnings.length) return { tone: "warn", text: `Auto-sync skipped ${last.warnings.length} project${last.warnings.length === 1 ? "" : "s"} with problems. See Settings.` };
+  return { tone: "ok", text: "" };
 }

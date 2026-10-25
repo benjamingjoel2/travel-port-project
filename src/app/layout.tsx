@@ -4,6 +4,7 @@ import { GeistMono } from "geist/font/mono";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import "@fontsource-variable/fraunces";
 import "./globals.css";
 
 export const metadata: Metadata = {

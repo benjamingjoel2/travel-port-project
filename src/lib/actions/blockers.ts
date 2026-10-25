@@ -14,7 +14,7 @@ function revalidateBrand(slug: string) {
   revalidatePath(`/brands/${slug}`);
   revalidatePath("/brands");
   revalidatePath("/pipeline");
-  revalidatePath("/");
+  revalidatePath("/", "layout");
 }
 
 const blockerInput = z.object({

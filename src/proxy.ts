@@ -1,8 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE, isSessionSecretMissing, verifySession } from "@/lib/auth/session-core";
 
-// /api/cron checks its own CRON_SECRET bearer token.
-const PUBLIC_PATHS = ["/login", "/robots.txt", "/favicon.ico", "/api/cron"];
+// /api/cron and /api/agent check their own bearer tokens (CRON_SECRET, AGENT_API_TOKEN).
+const PUBLIC_PATHS = ["/login", "/robots.txt", "/favicon.ico", "/api/cron", "/api/agent"];
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;

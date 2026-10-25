@@ -72,7 +72,7 @@ export async function createBrand(_prev: BrandFormState, formData: FormData): Pr
     .returning({ id: brands.id, slug: brands.slug });
   await initializeBrandChildren(db, row.id);
   await logActivity(db, row.id, actor, "brand_created", { name: v.name });
-  revalidatePath("/");
+  revalidatePath("/", "layout");
   revalidatePath("/brands");
   redirect(`/brands/${row.slug}`);
 }
@@ -128,7 +128,7 @@ export async function updateBrand(brandId: string, _prev: BrandFormState, formDa
   if (newStage) {
     await logActivity(db, brandId, actor, "status_changed", { from: existing.stage.name, to: newStage.name });
   }
-  revalidatePath("/");
+  revalidatePath("/", "layout");
   revalidatePath("/brands");
   revalidatePath(`/brands/${slug}`);
   redirect(`/brands/${slug}`);
@@ -166,7 +166,7 @@ export async function changeStage(brandId: string, stageId: string): Promise<Act
       .set({ stageId, updatedAt: new Date(), ...(stage.countsAsLive && !existing.launchedAt ? { launchedAt: new Date() } : {}) })
       .where(eq(brands.id, brandId));
     await logActivity(db, brandId, actor, "status_changed", { from: existing.stage.name, to: stage.name });
-    revalidatePath("/");
+    revalidatePath("/", "layout");
     revalidatePath("/brands");
     revalidatePath("/pipeline");
     revalidatePath(`/brands/${existing.slug}`);
@@ -203,7 +203,7 @@ export async function updatePhase(phaseId: string, input: { status: PhaseStatus;
     }
     revalidatePath(`/brands/${phase.brand.slug}`);
     revalidatePath("/brands");
-    revalidatePath("/");
+    revalidatePath("/", "layout");
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Something went wrong." };
@@ -215,7 +215,7 @@ export async function deleteBrand(brandId: string): Promise<ActionResult> {
     await requireRole("owner");
     const db = await getDb();
     await db.delete(brands).where(eq(brands.id, brandId));
-    revalidatePath("/");
+    revalidatePath("/", "layout");
     revalidatePath("/brands");
     return { ok: true };
   } catch (e) {

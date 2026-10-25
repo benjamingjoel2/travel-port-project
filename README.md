@@ -52,6 +52,28 @@ Settings it reads (Vercel project → Settings → Environment Variables):
 | `GITHUB_TOKEN` | optional | GitHub token (read-only). Adds private repos and avoids GitHub's anonymous rate limit |
 | `CRON_SECRET` | yes, for the nightly run | Any long random string; Vercel Cron sends it automatically |
 
+## Agent API (Claude Code agents)
+
+The brand-building agents in the `jarvis` repo read and update the tracker through `/api/agent`. They act as a team member called **Claude**, created on first use with the editor role and no login. Everything they do shows in the activity log and the bell like anyone else's work. The UI's rules apply too: a brand can't enter Live or Migrated until every required checklist item is ticked.
+
+To turn it on, add `AGENT_API_TOKEN` (a long random string) to the Vercel project's environment variables and redeploy. Give the agents the same token as `TRACKER_TOKEN`. Without the variable the API answers 503. `AGENT_NAME` optionally renames the agent member.
+
+Every call sends `Authorization: Bearer $AGENT_API_TOKEN` and a JSON body:
+
+| Call | Body | Does |
+| --- | --- | --- |
+| `GET /api/agent/brands` | | Pipeline stages, and every brand with slug, stage key and progress |
+| `POST /api/agent/brands` | `name`, `country` (ISO code or name), optional `brandType`, `marketsCovered`, `stage` (default `named`), `brandStory`, `paletteNotes`, `designReference`, `priority`, `repoUrl` | Registers a new brand with its phases and checklist |
+| `GET /api/agent/brands/:slug` | | Brand brief: story, palette, phases, checklist (with ids), latest prompt, open comments and blockers, recent activity |
+| `PATCH /api/agent/brands/:slug` | any of `brandStory`, `paletteNotes`, `repoUrl`, `stagingUrl`, `productionDomain`, `designReferenceUrl`, `contentReferenceUrls` | Fills in text fields. Name, type and owner stay on the Edit page |
+| `POST /api/agent/brands/:slug/stage` | `stage` (key or name) | Moves the brand. Returns 409 with the open items if the checklist blocks the move |
+| `POST /api/agent/brands/:slug/phase` | `phase` (1–5), `status` (`not_started`, `in_progress`, `done`), optional `notes` | Updates a build phase |
+| `POST /api/agent/brands/:slug/checklist` | `item` (id or part of the label), optional `done`, `detail`, `note` | Ticks or annotates one checklist item. Returns 409 if the label matches several items |
+| `POST /api/agent/brands/:slug/blocker` | `description`, `waitingOn` (`me`, `team`, `claude_code`, `third_party`) | Opens a blocker |
+| `POST /api/agent/brands/:slug/resolve-blocker` | `id` | Resolves a blocker |
+| `POST /api/agent/brands/:slug/comment` | `body` | Posts a comment on the brand |
+| `POST /api/agent/brands/:slug/prompt` | `body`, optional `changeNotes` | Saves the next prompt version |
+
 ## Running locally
 
 ```bash
@@ -72,6 +94,8 @@ Every brand has a **brand type**:
 - **Country**: one country (Nusa & Co. → Indonesia). Its *markets covered* is that country.
 - **Region**: several countries under one brand (Aravia → Arab world: UAE, Saudi Arabia, Oman, Qatar, Jordan, Bahrain, Egypt). Each market is shaded on the world map.
 - **Niche**: built around an activity rather than a place (for example scuba diving). *Markets covered* lists the activity. Niche brands don't appear on the map.
+
+**Map (home page)**: signing in opens a full-screen dark world map styled after Starlink's availability map. Countries are blue by status (Live, In progress, Planned) or by pipeline stage; drag to move, scroll, pinch or double-click to zoom, and search a country or brand to fly to it. Detailed outlines (`public/maps/countries-50m.json`, from world-atlas) load in the background for zooming in. The menu at the top right opens every other page; the old dashboard is at `/overview`.
 
 You can filter by type on the Brands table and the Pipeline board. The Overview shows the count per type. Auto-sync adds new projects as Country brands; switch the type on the brand's Edit page or when reviewing an unclear project in Settings.
 
