@@ -4,8 +4,9 @@ import { countryCodesFor, mapIdForCountry } from "@/lib/geo";
 import { SITE_LEVEL_RANK, siteLevel, type SiteLevel } from "@/lib/site-level";
 import { getCountryOverview } from "./countries";
 
-/** A country's colour: its furthest brand's site level, or "planned" when it is only on the plan. */
-export type MapStatus = SiteLevel | "planned";
+/** A country's step on the way to a live site: not started (or only planned), code on GitHub, preview site, live. */
+export type MapStatus = "none" | "repo" | "preview" | "live";
+const statusOf = (level: SiteLevel): MapStatus => (level === "idea" ? "none" : level);
 export type MapBrand = {
   name: string;
   slug: string;
@@ -43,14 +44,14 @@ export async function getMapData() {
     const brands: MapBrand[] = c.brands.map((b) => ({ name: b.name, slug: b.slug, stageName: b.stage.name, stageColor: b.stage.color, via: b.via, ...levelOf(b.slug) }));
     // The furthest-along brand decides the colour: one live site makes the country live.
     const best = brands.reduce<SiteLevel>((acc, b) => (SITE_LEVEL_RANK[b.level] > SITE_LEVEL_RANK[acc] ? b.level : acc), "idea");
-    countries[id] = { id, code: c.code, name: c.name, status: best, stageColor: c.stage.color, stageName: c.stage.name, brands, plan: null };
+    countries[id] = { id, code: c.code, name: c.name, status: statusOf(best), stageColor: c.stage.color, stageName: c.stage.name, brands, plan: null };
   }
   for (const p of o.planned) {
     if (p.status === "skipped") continue;
     const id = mapIdForCountry(p.countryCode);
     if (!id) continue;
     const plan = `Wave ${p.wave} · ${PLANNED_STATUS_LABELS[p.status]}`;
-    countries[id] ??= { id, code: p.countryCode, name: p.name, status: "planned", stageColor: "", stageName: "", brands: [], plan };
+    countries[id] ??= { id, code: p.countryCode, name: p.name, status: "none", stageColor: "", stageName: "", brands: [], plan };
     countries[id].plan = plan;
   }
 
@@ -74,10 +75,11 @@ export async function getMapData() {
       brands: o.brandCount,
       goal: o.goal,
       countries: o.covered.length,
-      live: list.filter((c) => c.status === "live").length,
-      preview: list.filter((c) => c.status === "preview").length,
+      // Countries at each step.
+      none: list.filter((c) => c.status === "none").length,
       repo: list.filter((c) => c.status === "repo").length,
-      planned: list.filter((c) => c.status === "planned").length,
+      preview: list.filter((c) => c.status === "preview").length,
+      live: list.filter((c) => c.status === "live").length,
     },
   };
 }
