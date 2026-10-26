@@ -61,7 +61,7 @@ export default async function BrandDetailPage({ params, searchParams }: PageProp
         <BrandLogo name={brand.name} logoUrl={brand.logoUrl} logoData={brand.logoData} size={56} />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="font-serif text-3xl font-medium tracking-tight">{brand.name}</h1>
+            <h1 className="text-3xl font-semibold">{brand.name}</h1>
             <StageSelect brandId={brand.id} stages={stages} current={brand.stage} disabled={!editable} missingRequired={missingRequired.map((m) => m.label)} />
             {openBlockers.length > 0 && (
               <span className="inline-flex items-center gap-1 rounded-md bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">

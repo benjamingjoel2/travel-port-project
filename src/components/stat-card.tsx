@@ -7,7 +7,7 @@ export function StatCard({ label, value, of, note, href }: { label: string; valu
   const body = (
     <>
       <div className="text-[11px] font-medium tracking-[0.14em] text-muted-foreground uppercase">{label}</div>
-      <div className="mt-2 font-serif text-4xl font-medium tracking-tight tabular-nums">
+      <div className="mt-2 text-4xl font-semibold tabular-nums">
         {value}
         {of && <span className="text-xl text-muted-foreground">/{of}</span>}
       </div>
@@ -16,7 +16,7 @@ export function StatCard({ label, value, of, note, href }: { label: string; valu
     </>
   );
   const className = cn(
-    "rounded-2xl border bg-card p-5 shadow-[0_1px_2px_rgb(60_40_20/0.04),0_8px_24px_-12px_rgb(60_40_20/0.12)] dark:shadow-none",
+    "rounded-md border bg-card p-5",
     href && "transition-colors hover:border-terra/40",
   );
   return href ? (

@@ -9,8 +9,8 @@ import type { FeatureCollection, MultiPolygon, Polygon } from "geojson";
 import type { GeometryCollection, Topology } from "topojson-specification";
 import { ArrowUpRightIcon, LogOutIcon, MenuIcon, MinusIcon, PlusIcon, SearchIcon, XIcon } from "lucide-react";
 import world from "@/data/world-110m.json";
-import type { MapCountry, MapData, MapSearchBrand, MapStatus } from "@/lib/data/map";
-import type { SiteLevel } from "@/lib/site-level";
+import type { MapCountry, MapData, MapSearchBrand } from "@/lib/data/map";
+import { PROGRESS, STEPS, brandStatus, hostOf } from "@/lib/progress";
 import { labelPoint, mainPart, type CountryShape } from "@/lib/map-shapes";
 import { NAV } from "@/components/app-sidebar";
 import { signOut } from "@/app/login/actions";
@@ -42,17 +42,7 @@ const BORDER = "rgba(255, 255, 255, 0.22)";
 const BORDER_ON_COLOUR = "rgba(255, 255, 255, 0.45)";
 const PANEL = "rgba(39, 39, 40, 0.8)";
 const LABEL = "rgba(255, 255, 255, 0.72)";
-// The four steps to a live site, as one blue scale from dark (nothing yet) to bright (live).
-const STATUS: Record<MapStatus, { label: string; long: string; color: string }> = {
-  none: { label: "Not started", long: "Nothing built yet", color: "#2b4562" },
-  repo: { label: "Code started", long: "On GitHub, no site yet", color: "#3c6fa8" },
-  preview: { label: "Test site", long: "On a Vercel test link", color: "#5f9fe6" },
-  live: { label: "Live", long: "On its real domain", color: "#a6e1ff" },
-};
-const STEPS: MapStatus[] = ["none", "repo", "preview", "live"];
-const brandStatus = (level: SiteLevel): MapStatus => (level === "idea" ? "none" : level);
-/** "safari-njema.vercel.app" from "https://safari-njema.vercel.app/". */
-const hostOf = (url: string) => url.replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+const STATUS = PROGRESS;
 
 // The view is a Mapbox-style camera: centre longitude, centre in Mercator units, and zoom
 // (at zoom 0 the world is 512 px wide).

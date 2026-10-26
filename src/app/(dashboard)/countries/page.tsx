@@ -1,9 +1,8 @@
 import Link from "next/link";
 import { getCountryOverview } from "@/lib/data/countries";
-import { getStages } from "@/lib/data/reference";
 import { canEdit, getActor } from "@/lib/auth";
-import { PLANNED_STATUS_LABELS } from "@/lib/constants";
-import { buildCountryShading, mapIdForCountry } from "@/lib/geo";
+import { progressShading, PROGRESS_LEGEND } from "@/lib/progress";
+import { getMapData } from "@/lib/data/map";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -15,17 +14,11 @@ import { PlanTable } from "./plan-table";
 export const metadata = { title: "Countries" };
 
 export default async function CountriesPage() {
-  const [o, stages, actor] = await Promise.all([getCountryOverview(), getStages(), getActor()]);
+  const [o, map, actor] = await Promise.all([getCountryOverview(), getMapData(), getActor()]);
   const editable = actor ? canEdit(actor.role) : false;
-  const shading = buildCountryShading(o.brands);
+  const shading = progressShading(map.countries);
   const toDo = o.planned.filter((p) => !p.countryBrand && p.status !== "skipped");
-  const plannedOnMap: Record<string, string> = {};
-  for (const p of toDo) {
-    const id = mapIdForCountry(p.countryCode);
-    if (id) plannedOnMap[id] = `Wave ${p.wave} · ${PLANNED_STATUS_LABELS[p.status]}`;
-  }
   const upNext = toDo.filter((p) => p.status === "up_next").length;
-
 
   return (
     <>
@@ -41,10 +34,10 @@ export default async function CountriesPage() {
       <Card className="mb-6">
         <CardHeader>
           <CardTitle>Map</CardTitle>
-          <CardDescription>Coloured by each country&apos;s furthest-along brand. Planned countries without a brand are shaded lilac.</CardDescription>
+          <CardDescription>Same colours as the home map: how far each country&apos;s furthest-along site has got.</CardDescription>
         </CardHeader>
         <CardContent>
-          <WorldMap shading={shading} stages={stages.filter((s) => !s.isTerminal)} planned={plannedOnMap} />
+          <WorldMap shading={shading} stages={PROGRESS_LEGEND} />
         </CardContent>
       </Card>
 

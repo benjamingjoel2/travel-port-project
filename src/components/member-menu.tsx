@@ -2,7 +2,6 @@ import { LogOutIcon, UserRoundIcon } from "lucide-react";
 import type { Actor } from "@/lib/auth";
 import { ROLE_LABELS } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { signOut } from "@/app/login/actions";
 
 export function MemberMenu({ actor }: { actor: Actor }) {
@@ -22,7 +21,6 @@ export function MemberMenu({ actor }: { actor: Actor }) {
           <div className="text-xs text-muted-foreground">{ROLE_LABELS[actor.role]}</div>
         </div>
       </div>
-      <ThemeToggle />
       <form action={signOut}>
         <Button type="submit" variant="ghost" size="icon-sm" title="Sign out (to switch person)">
           <LogOutIcon />

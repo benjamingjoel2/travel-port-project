@@ -43,8 +43,8 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
         <span className="flex size-11 items-center justify-center rounded-full bg-primary text-primary-foreground">
           <CompassIcon className="size-5" />
         </span>
-        <div className="mt-4 text-[11px] font-medium tracking-[0.16em] text-terra uppercase">Travel portfolio</div>
-        <h1 className="mt-1 font-serif text-3xl font-medium tracking-tight">Build Tracker</h1>
+        <div className="mt-4 text-[11px] font-semibold tracking-[0.18em] text-white/60 uppercase">Travel portfolio</div>
+        <h1 className="mt-1 text-2xl font-bold tracking-[0.2em] uppercase">Build Tracker</h1>
         <p className="mt-2 text-sm text-muted-foreground">Pick your name and enter your password.</p>
       </div>
       <LoginForm people={people} next={typeof next === "string" ? next : undefined} />
@@ -55,7 +55,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
 function Shell({ children }: { children: React.ReactNode }) {
   return (
     <main className="flex min-h-screen items-center justify-center bg-background p-4">
-      <div className="w-full max-w-sm rounded-2xl border bg-card p-8 shadow-[0_1px_2px_rgb(60_40_20/0.04),0_20px_48px_-24px_rgb(60_40_20/0.25)]">{children}</div>
+      <div className="w-full max-w-sm rounded-md border bg-card p-8">{children}</div>
     </main>
   );
 }

@@ -33,8 +33,8 @@ export function AppSidebar({ footer, bell }: { footer: React.ReactNode; bell?: R
             className={cn(
               "relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
               active
-                ? "bg-card font-medium text-foreground shadow-[0_1px_2px_rgb(60_40_20/0.06)] before:absolute before:inset-y-2 before:left-0 before:w-[3px] before:rounded-full before:bg-terra dark:bg-accent"
-                : "text-muted-foreground hover:bg-card/60 hover:text-foreground dark:hover:bg-accent/60",
+                ? "bg-white/10 font-medium text-foreground before:absolute before:inset-y-2 before:left-0 before:w-[3px] before:rounded-full before:bg-terra"
+                : "text-muted-foreground hover:bg-white/5 hover:text-foreground",
             )}
           >
             <item.icon className={cn("size-4", active && "text-terra")} />
@@ -82,7 +82,7 @@ function Brand() {
         <CompassIcon className="size-4.5" />
       </span>
       <span className="leading-tight">
-        <span className="block font-serif text-lg font-medium tracking-tight">Build Tracker</span>
+        <span className="block text-[13px] font-bold tracking-[0.2em] uppercase">Build Tracker</span>
         <span className="block text-[11px] tracking-[0.12em] text-muted-foreground uppercase">Travel portfolio</span>
       </span>
     </Link>
