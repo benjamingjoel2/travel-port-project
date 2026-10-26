@@ -113,15 +113,15 @@ function boundsOf(shapes: Shape[]): [[number, number], [number, number]] {
   ];
 }
 
-// Opens on the inhabited world (no Pacific gap or Antarctica) so countries are as big as possible;
-// on a phone, the region we work in most.
+// Opens zoomed in on the Americas to Asia, centred on Europe and Africa where most brands are, so
+// countries draw large; drag to reach Alaska, Japan or Australia. On a phone, Europe and Africa.
 const START_WIDE: [[number, number], [number, number]] = [
-  [-125, -40],
-  [150, 70],
+  [-95, -38],
+  [135, 68],
 ];
 const START_NARROW: [[number, number], [number, number]] = [
-  [-20, -36],
-  [60, 62],
+  [-10, -35],
+  [55, 60],
 ];
 const NO_PAD: Pad = { top: 0, right: 0, bottom: 0, left: 0 };
 
