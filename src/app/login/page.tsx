@@ -5,7 +5,7 @@ import { memberLogins, teamMembers } from "@/db/schema";
 import { isSessionSecretMissing } from "@/lib/auth/session-core";
 import { LoginForm } from "./login-form";
 
-export const metadata = { title: "Sign in · Build Tracker" };
+export const metadata = { title: "Sign in" };
 export const dynamic = "force-dynamic";
 
 export default async function LoginPage({ searchParams }: PageProps<"/login">) {
