@@ -95,7 +95,7 @@ Every brand has a **brand type**:
 - **Region**: several countries under one brand (Aravia → Arab world: UAE, Saudi Arabia, Oman, Qatar, Jordan, Bahrain, Egypt). Each market is shaded on the world map.
 - **Niche**: built around an activity rather than a place (for example scuba diving). *Markets covered* lists the activity. Niche brands don't appear on the map.
 
-**Map (home page)**: signing in opens a full-screen dark world map styled after Starlink's availability map. Countries are blue by status (Live, In progress, Planned) or by pipeline stage; drag to move, scroll, pinch or double-click to zoom, and search a country or brand to fly to it. Detailed outlines (`public/maps/countries-50m.json`, from world-atlas) load in the background for zooming in. The menu at the top right opens every other page; the old dashboard is at `/overview`.
+**Map (home page)**: signing in opens a full-screen dark world map styled after Starlink's availability map. Countries are shaded on one blue scale by how far their furthest brand's site has got, from GitHub and Vercel data: 1. Not started, 2. Code started (GitHub repo only), 3. Test site (Vercel preview link), 4. Live (own domain); the panel counts countries at each step; drag to move, scroll, pinch or double-click to zoom, and search a country or brand to fly to it. Detailed outlines (`public/maps/countries-50m.json`, from world-atlas) load in the background for zooming in. The menu at the top right opens every other page; the old dashboard is at `/overview`.
 
 You can filter by type on the Brands table and the Pipeline board. The Overview shows the count per type. Auto-sync adds new projects as Country brands; switch the type on the brand's Edit page or when reviewing an unclear project in Settings.
 

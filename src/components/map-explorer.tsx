@@ -3,30 +3,17 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { geoArea, geoBounds, geoMercator, geoPath } from "d3-geo";
-import { feature } from "topojson-client";
-import type { FeatureCollection, MultiPolygon, Polygon } from "geojson";
-import type { GeometryCollection, Topology } from "topojson-specification";
-import { ArrowUpRightIcon, InfoIcon, LogOutIcon, MenuIcon, MinusIcon, PlusIcon, SearchIcon, XIcon } from "lucide-react";
+import { geoBounds, geoMercator, geoPath } from "d3-geo";
+import { ArrowUpRightIcon, LogOutIcon, MenuIcon, MinusIcon, PlusIcon, SearchIcon, XIcon } from "lucide-react";
 import world from "@/data/world-110m.json";
-import type { MapCountry, MapData, MapSearchBrand, MapStatus } from "@/lib/data/map";
-import { labelPoint, mainPart, type CountryShape } from "@/lib/map-shapes";
+import type { MapCountry, MapData, MapSearchBrand } from "@/lib/data/map";
+import { PROGRESS, STEPS, brandStatus, hostOf } from "@/lib/progress";
+import { mainPart, toShapes, type CountriesTopo, type Shape } from "@/lib/map-shapes";
 import { NAV } from "@/components/app-sidebar";
 import { signOut } from "@/app/login/actions";
 import { cn } from "@/lib/utils";
 
-type CountriesTopo = Topology<{ countries: GeometryCollection<{ name?: string }> }>;
-type Shape = { id: string; name: string; geo: CountryShape; label: [number, number]; area: number };
 
-function toShapes(topo: CountriesTopo): Shape[] {
-  return (feature(topo, topo.objects.countries) as FeatureCollection<Polygon | MultiPolygon, { name?: string }>).features.map((f, i) => ({
-    id: f.id === undefined ? `x${i}` : String(f.id),
-    name: f.properties?.name ?? "",
-    geo: f,
-    label: labelPoint(f),
-    area: geoArea(mainPart(f)),
-  }));
-}
 // Coarse outlines ship with the page; finer ones (with small islands) load in the background for zooming in.
 const COARSE = toShapes(world as unknown as CountriesTopo);
 const DETAILED_URL = "/maps/countries-50m.json";
@@ -41,11 +28,7 @@ const BORDER = "rgba(255, 255, 255, 0.22)";
 const BORDER_ON_COLOUR = "rgba(255, 255, 255, 0.45)";
 const PANEL = "rgba(39, 39, 40, 0.8)";
 const LABEL = "rgba(255, 255, 255, 0.72)";
-const STATUS: Record<MapStatus, { label: string; color: string }> = {
-  live: { label: "Live", color: "#8cc4ff" },
-  progress: { label: "In progress", color: "#4a8bd4" },
-  planned: { label: "Planned", color: "#2b5683" },
-};
+const STATUS = PROGRESS;
 
 // The view is a Mapbox-style camera: centre longitude, centre in Mercator units, and zoom
 // (at zoom 0 the world is 512 px wide).
@@ -113,23 +96,22 @@ function boundsOf(shapes: Shape[]): [[number, number], [number, number]] {
   ];
 }
 
-// Opens on the inhabited world (no Pacific gap or Antarctica) so countries are as big as possible;
-// on a phone, the region we work in most.
+// Opens zoomed in on the Americas to Asia, centred on Europe and Africa where most brands are, so
+// countries draw large; drag to reach Alaska, Japan or Australia. On a phone, Europe and Africa.
 const START_WIDE: [[number, number], [number, number]] = [
-  [-125, -40],
-  [150, 70],
+  [-95, -38],
+  [135, 68],
 ];
 const START_NARROW: [[number, number], [number, number]] = [
-  [-20, -36],
-  [60, 62],
+  [-10, -35],
+  [55, 60],
 ];
 const NO_PAD: Pad = { top: 0, right: 0, bottom: 0, left: 0 };
 
-type Mode = "status" | "stages";
 type Selection = { kind: "country"; id: string } | { kind: "brand"; slug: string } | null;
 type Suggestion = { key: string; label: string; detail: string; color: string; pick: () => void };
 
-export function MapExplorer({ data, stages, actorName }: { data: MapData; stages: { id: string; name: string; color: string }[]; actorName: string }) {
+export function MapExplorer({ data, actorName }: { data: MapData; actorName: string }) {
   const router = useRouter();
   const frame = useRef<HTMLDivElement>(null);
   const [box, setBox] = useState<Box>({ w: 0, h: 0 });
@@ -138,11 +120,9 @@ export function MapExplorer({ data, stages, actorName }: { data: MapData; stages
   const boxRef = useRef(box);
   const anim = useRef<number | null>(null);
   const [detailed, setDetailed] = useState<Shape[] | null>(null);
-  const [mode, setMode] = useState<Mode>("status");
   const [selected, setSelected] = useState<Selection>(null);
   const [hover, setHover] = useState<{ x: number; y: number; id: string } | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [showStats, setShowStats] = useState(false);
 
   useEffect(() => {
     viewRef.current = view;
@@ -247,7 +227,6 @@ export function MapExplorer({ data, stages, actorName }: { data: MapData; stages
   const fillFor = (id: string) => {
     const c = data.countries[id];
     if (!c) return LAND;
-    if (mode === "stages" && c.status !== "planned") return c.stageColor;
     return STATUS[c.status].color;
   };
 
@@ -355,7 +334,7 @@ export function MapExplorer({ data, stages, actorName }: { data: MapData; stages
         return {
           key: `c-${x.id}`,
           label: x.name,
-          detail: c ? (c.brands.length ? `${STATUS[c.status].label} · ${c.brands.length} brand${c.brands.length === 1 ? "" : "s"}` : `Planned · ${c.plan ?? ""}`) : "Country · no brand yet",
+          detail: c ? `${STATUS[c.status].label}${c.brands.length ? ` · ${c.brands.length} brand${c.brands.length === 1 ? "" : "s"}` : c.plan ? ` · planned, ${c.plan}` : ""}` : "No brand yet",
           color: c ? STATUS[c.status].color : LAND,
           pick: () => selectCountry(x.id),
         };
@@ -377,13 +356,6 @@ export function MapExplorer({ data, stages, actorName }: { data: MapData; stages
     setSearchShown(false);
     (document.activeElement as HTMLElement | null)?.blur();
   };
-
-  // ---- legend ----
-  const usedStages = new Set(Object.values(data.countries).map((c) => c.stageName));
-  const legend =
-    mode === "status"
-      ? (Object.keys(STATUS) as MapStatus[]).map((k) => ({ key: k, label: STATUS[k].label, color: STATUS[k].color }))
-      : [...stages.filter((st) => usedStages.has(st.name)).map((st) => ({ key: st.id, label: st.name, color: st.color })), { key: "planned", label: "Planned", color: STATUS.planned.color }];
 
   const z = view?.z ?? 0;
   // Country names grow with zoom like Mapbox's, and appear once a country is big enough on screen to hold one.
@@ -451,53 +423,30 @@ export function MapExplorer({ data, stages, actorName }: { data: MapData; stages
         )}
       </div>
 
-      {/* Top-left control panel */}
-      <div className="absolute top-4 right-[116px] left-4 sm:right-auto">
-        <div className="rounded-md p-2 sm:flex sm:w-[618px] sm:items-center sm:gap-4" style={{ backgroundColor: PANEL }}>
-          <div className="flex rounded-md bg-[#3f3f40] p-0.5 text-[13px] font-bold">
-            {(["status", "stages"] as Mode[]).map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => setMode(m)}
-                className={cn("flex-1 rounded-[5px] px-4 py-1.5 transition-colors sm:flex-none", mode === m ? "bg-[#656566] text-white" : "text-[#e6e6e6] hover:text-white")}
-              >
-                {m === "status" ? "Status" : "Stages"}
-              </button>
-            ))}
+      {/* Top-left: the four steps to a live site, in order, with how many countries are at each */}
+      <div className="absolute top-4 right-[116px] left-4">
+        <div className="max-w-[600px] rounded-md px-3 pt-2.5 pb-3" style={{ backgroundColor: PANEL }}>
+          <div className="flex flex-wrap items-baseline justify-between gap-x-3">
+            <span className="text-[11px] font-semibold tracking-[0.18em] text-white/60 uppercase">Build progress</span>
+            <span className="text-xs text-white/60 tabular-nums">
+              <span className="font-semibold text-white">{data.stats.brands}</span> of {data.stats.goal} brands · {data.stats.countries} countries
+            </span>
           </div>
-          <div className="mt-2 flex flex-1 items-center gap-3 px-1 sm:mt-0 sm:px-0">
-            <div className="flex flex-1 flex-wrap gap-x-4 gap-y-1.5">
-              {legend.map((l) => (
-                <span key={l.key} className="inline-flex items-center gap-2 text-xs">
-                  <span className="size-4 rounded-[2px]" style={{ backgroundColor: l.color }} />
-                  {l.label}
-                </span>
-              ))}
-            </div>
-            <button type="button" aria-label="Totals" onClick={() => setShowStats((v) => !v)} className={cn("ml-2 shrink-0 rounded-full p-0.5 text-[#bdbdbd] hover:text-white", showStats && "text-white")}>
-              <InfoIcon className="size-4" />
-            </button>
-          </div>
-        </div>
-        {showStats && (
-          <div className="mt-2 grid w-full grid-cols-4 overflow-hidden rounded-md text-center sm:w-[618px]" style={{ backgroundColor: PANEL }}>
-            {[
-              { n: `${data.stats.brands}`, of: `/${data.stats.goal}`, l: "Brands" },
-              { n: `${data.stats.countries}`, l: "Countries" },
-              { n: `${data.stats.live}`, l: "Live" },
-              { n: `${data.stats.planned}`, l: "Planned" },
-            ].map((st) => (
-              <div key={st.l} className="px-2 py-2.5">
-                <div className="text-lg font-semibold tabular-nums">
-                  {st.n}
-                  {st.of && <span className="text-xs font-normal text-white/50">{st.of}</span>}
+          <ol className="mt-2.5 grid grid-cols-2 gap-x-3 gap-y-3 sm:grid-cols-4 sm:gap-x-2">
+            {STEPS.map((k, i) => (
+              <li key={k}>
+                <div className="h-1.5 rounded-full" style={{ backgroundColor: STATUS[k].color }} />
+                <div className="mt-1.5 flex items-baseline justify-between gap-1">
+                  <span className="text-[13px] font-semibold">
+                    {i + 1}. {STATUS[k].label}
+                  </span>
+                  <span className="text-[13px] font-semibold tabular-nums">{data.stats[k]}</span>
                 </div>
-                <div className="text-[11px] tracking-wide text-white/60 uppercase">{st.l}</div>
-              </div>
+                <div className="hidden text-[11px] leading-tight text-white/55 sm:block">{STATUS[k].long}</div>
+              </li>
             ))}
-          </div>
-        )}
+          </ol>
+        </div>
       </div>
 
       {/* Top-right: search and menu (where Starlink has its close button) */}
@@ -551,7 +500,6 @@ export function MapExplorer({ data, stages, actorName }: { data: MapData; stages
           countryNames={(selectedBrand?.countryIds ?? []).map((id) => ({ id, name: shapeById.get(id)?.name ?? id }))}
           onCountry={selectCountry}
           onClose={() => setSelected(null)}
-          showStats={showStats}
         />
       )}
 
@@ -648,8 +596,10 @@ function HoverDetail({ country }: { country?: MapCountry }) {
   return (
     <div className="space-y-0.5 text-white/80">
       {country.brands.map((b) => (
-        <div key={b.slug}>
-          {b.name} · {b.stageName}
+        <div key={b.slug} className="flex items-center gap-1.5">
+          <span className="size-2 rounded-[2px]" style={{ backgroundColor: STATUS[brandStatus(b.level)].color }} />
+          {b.name} · {STATUS[brandStatus(b.level)].label}
+          {b.url && <span className="text-white/50">· {hostOf(b.url)}</span>}
         </div>
       ))}
       {country.plan && <div className="text-white/60">On the plan · {country.plan}</div>}
@@ -664,7 +614,6 @@ function InfoCard({
   countryNames,
   onCountry,
   onClose,
-  showStats,
 }: {
   country?: MapCountry;
   countryName: string;
@@ -672,13 +621,12 @@ function InfoCard({
   countryNames: { id: string; name: string }[];
   onCountry: (id: string) => void;
   onClose: () => void;
-  showStats: boolean;
 }) {
   return (
     <div
       className={cn(
         "absolute right-4 left-4 max-h-[40vh] overflow-y-auto rounded-md p-4 sm:right-auto sm:max-h-[calc(100vh-280px)] sm:w-[360px]",
-        showStats ? "top-[196px] sm:top-[146px]" : "top-[120px] sm:top-[80px]",
+        "top-[150px] sm:top-[128px]",
       )}
       style={{ backgroundColor: PANEL }}
     >
@@ -695,8 +643,8 @@ function InfoCard({
       {brand ? (
         <>
           <div className="mt-2 flex items-center gap-2 text-sm text-white/80">
-            <span className="size-2.5 rounded-full" style={{ backgroundColor: brand.stageColor }} />
-            {brand.stageName}
+            <span className="size-3 rounded-[2px]" style={{ backgroundColor: STATUS[brandStatus(brand.level)].color }} />
+            {STATUS[brandStatus(brand.level)].label} · {STATUS[brandStatus(brand.level)].long}
           </div>
           <div className="mt-4 text-[11px] tracking-[0.18em] text-white/55 uppercase">Markets</div>
           <div className="mt-2 flex flex-wrap gap-1.5">
@@ -714,24 +662,30 @@ function InfoCard({
         <>
           <div className="mt-2 flex items-center gap-2 text-sm text-white/80">
             <span className="size-3 rounded-[2px]" style={{ backgroundColor: country ? STATUS[country.status].color : LAND }} />
-            {country ? (country.brands.length ? STATUS[country.status].label : "Planned, no brand yet") : "No brand yet"}
+            {country ? `${STATUS[country.status].label} · ${STATUS[country.status].long}` : "No brand yet"}
           </div>
           {country?.plan && <div className="mt-1 text-sm text-white/60">On the plan · {country.plan}</div>}
 
           {country && country.brands.length > 0 && (
             <div className="mt-3 divide-y divide-white/10 border-y border-white/10">
               {country.brands.map((b) => (
-                <Link key={b.slug} href={`/brands/${b.slug}`} className="-mx-2 flex items-center gap-3 rounded-[2px] px-2 py-2.5 hover:bg-white/5">
-                  <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: b.stageColor }} />
-                  <span className="min-w-0 flex-1">
+                <div key={b.slug} className="-mx-2 flex items-center gap-3 rounded-[2px] px-2 py-2.5 hover:bg-white/5">
+                  <span className="size-3 shrink-0 rounded-[2px]" style={{ backgroundColor: STATUS[brandStatus(b.level)].color }} />
+                  <Link href={`/brands/${b.slug}`} className="min-w-0 flex-1">
                     <span className="block truncate text-[15px] font-medium">{b.name}</span>
                     <span className="block text-xs text-white/55">
-                      {b.stageName}
+                      {b.url && b.level !== "repo" ? hostOf(b.url) : STATUS[brandStatus(b.level)].label}
                       {b.via === "region" && " · region brand"}
                     </span>
-                  </span>
-                  <ArrowUpRightIcon className="size-4 text-white/45" />
-                </Link>
+                  </Link>
+                  {b.url ? (
+                    <a href={/^https?:\/\//.test(b.url) ? b.url : `https://${b.url}`} target="_blank" rel="noreferrer" className="shrink-0 rounded-[2px] bg-white/10 px-2 py-1 text-xs hover:bg-white/20">
+                      {b.level === "repo" ? "Repo" : b.level === "live" ? "Site" : "Preview"} <ArrowUpRightIcon className="inline size-3" />
+                    </a>
+                  ) : (
+                    <ArrowUpRightIcon className="size-4 text-white/45" />
+                  )}
+                </div>
               ))}
             </div>
           )}

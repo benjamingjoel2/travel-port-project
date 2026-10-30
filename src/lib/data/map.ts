@@ -1,10 +1,22 @@
 import "server-only";
 import { PLANNED_STATUS_LABELS } from "@/lib/constants";
 import { countryCodesFor, mapIdForCountry } from "@/lib/geo";
+import { SITE_LEVEL_RANK, siteLevel, type SiteLevel } from "@/lib/site-level";
 import { getCountryOverview } from "./countries";
 
-export type MapStatus = "live" | "progress" | "planned";
-export type MapBrand = { name: string; slug: string; stageName: string; stageColor: string; via: "country" | "region" | "niche" };
+/** A country's step on the way to a live site: not started (or only planned), code on GitHub, preview site, live. */
+export type MapStatus = "none" | "repo" | "preview" | "live";
+const statusOf = (level: SiteLevel): MapStatus => (level === "idea" ? "none" : level);
+export type MapBrand = {
+  name: string;
+  slug: string;
+  stageName: string;
+  stageColor: string;
+  via: "country" | "region" | "niche";
+  level: SiteLevel;
+  /** The live site, preview link or repo that shows the level. */
+  url: string | null;
+};
 export type MapCountry = {
   id: string;
   code: string;
@@ -23,28 +35,23 @@ export type MapSearchBrand = MapBrand & { countryIds: string[] };
 export async function getMapData() {
   const o = await getCountryOverview();
   const countries: Record<string, MapCountry> = {};
+  const levels = new Map(o.brands.map((b) => [b.slug, siteLevel(b)]));
+  const levelOf = (slug: string) => levels.get(slug) ?? { level: "idea" as const, url: null };
 
   for (const c of o.covered) {
     const id = mapIdForCountry(c.code);
     if (!id) continue;
-    const active = c.brands.some((b) => !b.stage.isTerminal);
-    countries[id] = {
-      id,
-      code: c.code,
-      name: c.name,
-      status: c.live ? "live" : active ? "progress" : "planned",
-      stageColor: c.stage.color,
-      stageName: c.stage.name,
-      brands: c.brands.map((b) => ({ name: b.name, slug: b.slug, stageName: b.stage.name, stageColor: b.stage.color, via: b.via })),
-      plan: null,
-    };
+    const brands: MapBrand[] = c.brands.map((b) => ({ name: b.name, slug: b.slug, stageName: b.stage.name, stageColor: b.stage.color, via: b.via, ...levelOf(b.slug) }));
+    // The furthest-along brand decides the colour: one live site makes the country live.
+    const best = brands.reduce<SiteLevel>((acc, b) => (SITE_LEVEL_RANK[b.level] > SITE_LEVEL_RANK[acc] ? b.level : acc), "idea");
+    countries[id] = { id, code: c.code, name: c.name, status: statusOf(best), stageColor: c.stage.color, stageName: c.stage.name, brands, plan: null };
   }
   for (const p of o.planned) {
     if (p.status === "skipped") continue;
     const id = mapIdForCountry(p.countryCode);
     if (!id) continue;
     const plan = `Wave ${p.wave} · ${PLANNED_STATUS_LABELS[p.status]}`;
-    countries[id] ??= { id, code: p.countryCode, name: p.name, status: "planned", stageColor: "", stageName: "", brands: [], plan };
+    countries[id] ??= { id, code: p.countryCode, name: p.name, status: "none", stageColor: "", stageName: "", brands: [], plan };
     countries[id].plan = plan;
   }
 
@@ -54,6 +61,7 @@ export async function getMapData() {
     stageName: b.stage.name,
     stageColor: b.stage.color,
     via: b.brandType === "niche" ? "niche" : b.brandType === "region" ? "region" : "country",
+    ...levelOf(b.slug),
     countryIds: countryCodesFor(b)
       .map((code) => mapIdForCountry(code))
       .filter((id): id is string => Boolean(id)),
@@ -67,8 +75,11 @@ export async function getMapData() {
       brands: o.brandCount,
       goal: o.goal,
       countries: o.covered.length,
+      // Countries at each step.
+      none: list.filter((c) => c.status === "none").length,
+      repo: list.filter((c) => c.status === "repo").length,
+      preview: list.filter((c) => c.status === "preview").length,
       live: list.filter((c) => c.status === "live").length,
-      planned: list.filter((c) => c.status === "planned").length,
     },
   };
 }

@@ -11,13 +11,14 @@ import { StageBadge } from "@/components/stage-badge";
 import { BrandLogo } from "@/components/brand-logo";
 import { WorldMap } from "@/components/world-map";
 import { StatCard } from "@/components/stat-card";
-import { buildCountryShading } from "@/lib/geo";
+import { progressShading, PROGRESS_LEGEND } from "@/lib/progress";
+import { getMapData } from "@/lib/data/map";
 import { getSyncState, isSyncConfigured, syncHealth } from "@/lib/sync";
 
 export const metadata = { title: "Overview" };
 
 export default async function OverviewPage() {
-  const [brands, stages, regions, blockers, sync, comments] = await Promise.all([listBrands(), getStages(), getRegions(), getOpenBlockers(), getSyncState(), getOpenComments(8)]);
+  const [brands, stages, regions, blockers, sync, comments, map] = await Promise.all([listBrands(), getStages(), getRegions(), getOpenBlockers(), getSyncState(), getOpenComments(8), getMapData()]);
   const openCommentCount = brands.reduce((n, b) => n + b.openComments, 0);
   const syncNote = isSyncConfigured() ? (sync.last ? ` Synced with Vercel and GitHub ${timeAgo(sync.last.at)}.` : " Syncing with Vercel and GitHub…") : "";
   const health = syncHealth(sync);
@@ -30,10 +31,10 @@ export default async function OverviewPage() {
   });
   const missingCountry = brands.filter((b) => b.brandType === "country" && !b.countryCode).length;
   const recent = [...brands].sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()).slice(0, 8);
-  const shading = buildCountryShading(brands);
+  const shading = progressShading(map.countries);
   const overdue = brands.filter((b) => b.targetLaunchDate && !b.stage.countsAsLive && !b.stage.isTerminal && (daysUntil(b.targetLaunchDate) ?? 1) < 0);
 
-  const countries = Object.keys(shading).length;
+  const countries = map.stats.countries;
   const eyebrow = new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
 
   return (
@@ -64,7 +65,7 @@ export default async function OverviewPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <WorldMap shading={shading} stages={stages.filter((s) => !s.isTerminal)} />
+          <WorldMap shading={shading} stages={PROGRESS_LEGEND} />
         </CardContent>
       </Card>
 
@@ -85,7 +86,7 @@ export default async function OverviewPage() {
               <Link key={stage.id} href={`/brands?stage=${stage.key}`} className="flex items-center gap-3 rounded-lg px-2 py-1.5 text-sm hover:bg-accent">
                 <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: stage.color }} />
                 <span className="flex-1">{stage.name}</span>
-                <span className="font-serif text-base tabular-nums">{count}</span>
+                <span className="text-base font-semibold tabular-nums">{count}</span>
               </Link>
             ))}
           </CardContent>
@@ -105,7 +106,7 @@ export default async function OverviewPage() {
                     {t.type !== "country" && t.count > 0 && ` · ${t.markets} ${t.type === "niche" ? (t.markets === 1 ? "focus" : "focuses") : t.markets === 1 ? "market" : "markets"}`}
                   </span>
                 </span>
-                <span className="font-serif text-2xl tabular-nums">{t.count}</span>
+                <span className="text-2xl font-semibold tabular-nums">{t.count}</span>
               </Link>
             ))}
             <div className="mt-4 border-t pt-4">

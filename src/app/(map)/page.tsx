@@ -1,11 +1,10 @@
 import { requireActor } from "@/lib/auth";
 import { getMapData } from "@/lib/data/map";
-import { getStages } from "@/lib/data/reference";
 import { MapExplorer } from "@/components/map-explorer";
 
 export const metadata = { title: "Map" };
 
 export default async function MapPage() {
-  const [actor, data, stages] = await Promise.all([requireActor(), getMapData(), getStages()]);
-  return <MapExplorer data={data} stages={stages.filter((s) => !s.isTerminal).map((s) => ({ id: s.id, name: s.name, color: s.color }))} actorName={actor.name} />;
+  const [actor, data] = await Promise.all([requireActor(), getMapData()]);
+  return <MapExplorer data={data} actorName={actor.name} />;
 }
