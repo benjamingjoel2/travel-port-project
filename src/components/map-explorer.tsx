@@ -3,31 +3,17 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { geoArea, geoBounds, geoMercator, geoPath } from "d3-geo";
-import { feature } from "topojson-client";
-import type { FeatureCollection, MultiPolygon, Polygon } from "geojson";
-import type { GeometryCollection, Topology } from "topojson-specification";
+import { geoBounds, geoMercator, geoPath } from "d3-geo";
 import { ArrowUpRightIcon, LogOutIcon, MenuIcon, MinusIcon, PlusIcon, SearchIcon, XIcon } from "lucide-react";
 import world from "@/data/world-110m.json";
 import type { MapCountry, MapData, MapSearchBrand } from "@/lib/data/map";
 import { PROGRESS, STEPS, brandStatus, hostOf } from "@/lib/progress";
-import { labelPoint, mainPart, type CountryShape } from "@/lib/map-shapes";
+import { mainPart, toShapes, type CountriesTopo, type Shape } from "@/lib/map-shapes";
 import { NAV } from "@/components/app-sidebar";
 import { signOut } from "@/app/login/actions";
 import { cn } from "@/lib/utils";
 
-type CountriesTopo = Topology<{ countries: GeometryCollection<{ name?: string }> }>;
-type Shape = { id: string; name: string; geo: CountryShape; label: [number, number]; area: number };
 
-function toShapes(topo: CountriesTopo): Shape[] {
-  return (feature(topo, topo.objects.countries) as FeatureCollection<Polygon | MultiPolygon, { name?: string }>).features.map((f, i) => ({
-    id: f.id === undefined ? `x${i}` : String(f.id),
-    name: f.properties?.name ?? "",
-    geo: f,
-    label: labelPoint(f),
-    area: geoArea(mainPart(f)),
-  }));
-}
 // Coarse outlines ship with the page; finer ones (with small islands) load in the background for zooming in.
 const COARSE = toShapes(world as unknown as CountriesTopo);
 const DETAILED_URL = "/maps/countries-50m.json";
@@ -438,8 +424,8 @@ export function MapExplorer({ data, actorName }: { data: MapData; actorName: str
       </div>
 
       {/* Top-left: the four steps to a live site, in order, with how many countries are at each */}
-      <div className="absolute top-4 right-[116px] left-4 sm:right-auto">
-        <div className="rounded-md px-3 pt-2.5 pb-3 sm:w-[600px]" style={{ backgroundColor: PANEL }}>
+      <div className="absolute top-4 right-[116px] left-4">
+        <div className="max-w-[600px] rounded-md px-3 pt-2.5 pb-3" style={{ backgroundColor: PANEL }}>
           <div className="flex flex-wrap items-baseline justify-between gap-x-3">
             <span className="text-[11px] font-semibold tracking-[0.18em] text-white/60 uppercase">Build progress</span>
             <span className="text-xs text-white/60 tabular-nums">
