@@ -2,6 +2,7 @@ import "server-only";
 import { PLANNED_STATUS_LABELS } from "@/lib/constants";
 import { countryCodesFor, mapIdForCountry } from "@/lib/geo";
 import { SITE_LEVEL_RANK, siteLevel, type SiteLevel } from "@/lib/site-level";
+import { getMonitorRows, isDown } from "@/lib/monitor";
 import { getCountryOverview } from "./countries";
 
 /** A country's step on the way to a live site: not started (or only planned), code on GitHub, preview site, live. */
@@ -68,6 +69,8 @@ export async function getMapData() {
   }));
 
   const list = Object.values(countries);
+  // Only current sites count: a dropped brand or an old address keeps its last check but is not down now.
+  const monitored = await getMonitorRows();
   return {
     countries,
     brands,
@@ -80,6 +83,8 @@ export async function getMapData() {
       repo: list.filter((c) => c.status === "repo").length,
       preview: list.filter((c) => c.status === "preview").length,
       live: list.filter((c) => c.status === "live").length,
+      /** Sites down right now (two failed checks in a row), for the warning on the map. */
+      sitesDown: monitored.filter((r) => r.uptime?.url === r.url && isDown(r.uptime)).length,
     },
   };
 }

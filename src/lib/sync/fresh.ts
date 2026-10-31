@@ -1,6 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { after, connection } from "next/server";
+import { maybeMonitor } from "@/lib/monitor";
 import { maybeSync } from "./index";
 
 /** How long a page waits for a sync before rendering anyway (the sync then finishes in the background). */
@@ -18,4 +19,6 @@ export const ensureFreshData = cache(async (): Promise<void> => {
   const run = maybeSync().catch((e) => console.error("[auto-sync] failed", e));
   const finished = await Promise.race([run.then(() => true), new Promise<boolean>((resolve) => setTimeout(() => resolve(false), WAIT_MS))]);
   if (!finished) after(() => run);
+  // Site checks run in the background after the page is sent, at most every eight minutes.
+  after(() => maybeMonitor().catch((e) => console.error("[monitor] failed", e)));
 });

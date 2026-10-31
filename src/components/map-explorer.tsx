@@ -430,6 +430,11 @@ export function MapExplorer({ data, actorName }: { data: MapData; actorName: str
             <span className="text-[11px] font-semibold tracking-[0.18em] text-white/60 uppercase">Build progress</span>
             <span className="text-xs text-white/60 tabular-nums">
               <span className="font-semibold text-white">{data.stats.brands}</span> of {data.stats.goal} brands · {data.stats.countries} countries
+              {data.stats.sitesDown > 0 && (
+                <Link href="/monitoring" className="ml-2 font-semibold text-[#ff8a8a] hover:underline">
+                  {data.stats.sitesDown} site{data.stats.sitesDown === 1 ? "" : "s"} down
+                </Link>
+              )}
             </span>
           </div>
           <ol className="mt-2.5 grid grid-cols-2 gap-x-3 gap-y-3 sm:grid-cols-4 sm:gap-x-2">

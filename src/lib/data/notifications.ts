@@ -5,7 +5,7 @@ import { activityLog, teamMembers } from "@/db/schema";
 import type { Actor } from "@/lib/auth";
 
 /** Activity worth a ping. Your own actions never notify you; auto-sync's (no person) always do. */
-export const NOTIFY_ACTIONS = ["note_added", "note_replied", "note_edited", "note_done", "note_reopened", "blocker_opened", "blocker_resolved", "blocker_reopened", "status_changed", "brand_created"];
+export const NOTIFY_ACTIONS = ["note_added", "note_replied", "note_edited", "note_done", "note_reopened", "blocker_opened", "blocker_resolved", "blocker_reopened", "status_changed", "brand_created", "site_down", "site_up", "build_failed", "build_fixed"];
 
 export async function getNotifications(actor: Actor, limit = 30) {
   const db = await getDb();

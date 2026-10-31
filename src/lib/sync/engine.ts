@@ -1,9 +1,10 @@
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import type { Db } from "@/db";
 import * as schema from "@/db/schema";
 import { initializeBrandChildren } from "@/db/seed";
 import { countryByCode } from "@/lib/countries";
 import { slugify } from "@/lib/utils";
+import { buildEvent, type DeployLike } from "@/lib/monitor-core";
 import { detectCountryFromName, detectCountryFromText, detectCountryInName, humanize } from "./detect";
 import { regionForCountry } from "./regions";
 import type { GithubRepo, VercelProject } from "./sources";
@@ -317,6 +318,12 @@ async function applyCandidates(db: Db, candidates: Candidate[], cfg: SyncConfig,
 
     // 5. Latest deploy / push info.
     if (c.vercel) {
+      // A newly failed build (or the fix after one) goes to everyone's notifications.
+      const prevVercel = await db.query.integrationSnapshots.findFirst({
+        where: and(eq(schema.integrationSnapshots.brandId, brand.id), eq(schema.integrationSnapshots.kind, "vercel")),
+      });
+      const build = buildEvent((prevVercel?.data as { latest?: DeployLike } | undefined)?.latest, c.vercel.latest);
+      if (build) await log(db, brand.id, build.action, build.details);
       await upsertSnapshot(db, brand.id, "vercel", { production: c.vercel.production, latest: c.vercel.latest, customDomain: c.vercel.customDomain, stagingUrl: c.vercel.stagingUrl, projectUrl: c.vercel.projectUrl });
     }
     if (c.github) {
