@@ -11,5 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
+      # A failed call logs a warning instead of failing the run, so a tracker deploy that is
+      # pending (or a short outage) doesn't email a failure every 10 minutes. The tracker's own
+      # Monitoring page shows when checks last ran.
       - name: Ask the tracker to check every site
-        run: curl -fsS --max-time 90 https://sitetracker.tourground.com/api/cron/monitor
+        run: curl -fsS --max-time 90 https://sitetracker.tourground.com/api/cron/monitor || echo "::warning::The tracker did not answer the monitor call"
