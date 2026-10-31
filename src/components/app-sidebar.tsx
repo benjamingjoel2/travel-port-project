@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { ColumnsIcon, CompassIcon, FlagIcon, GlobeIcon, LayoutDashboardIcon, MapIcon, MenuIcon, SettingsIcon, SparklesIcon, XIcon } from "lucide-react";
+import { ActivityIcon, ColumnsIcon, CompassIcon, FlagIcon, GlobeIcon, LayoutDashboardIcon, MapIcon, MenuIcon, SettingsIcon, SparklesIcon, XIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
@@ -13,6 +13,7 @@ export const NAV = [
   { href: "/pipeline", label: "Pipeline", icon: ColumnsIcon },
   { href: "/brands", label: "Brands", icon: GlobeIcon },
   { href: "/countries", label: "Countries", icon: FlagIcon },
+  { href: "/monitoring", label: "Monitoring", icon: ActivityIcon },
   { href: "/prompts", label: "Prompts", icon: SparklesIcon },
   { href: "/settings", label: "Settings", icon: SettingsIcon },
 ];

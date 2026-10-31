@@ -1,0 +1,15 @@
+# Runs the Build Tracker's site checks every 10 minutes. The tracker skips a run that comes
+# less than 8 minutes after the last one, so this needs no secret.
+name: Site monitor
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+permissions: {}
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Ask the tracker to check every site
+        run: curl -fsS --max-time 90 https://sitetracker.tourground.com/api/cron/monitor

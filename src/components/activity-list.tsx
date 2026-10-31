@@ -34,6 +34,14 @@ export function describe(entry: Pick<ActivityEntry, "action" | "details">): stri
       return `resolved a blocker: ${d.description ?? ""}`;
     case "blocker_reopened":
       return `reopened a blocker: ${d.description ?? ""}`;
+    case "site_down":
+      return `site is down: ${d.url ?? ""} (${d.error ?? "no answer"})`;
+    case "site_up":
+      return `site is back up after ${d.downFor ?? "a while"}`;
+    case "build_failed":
+      return `build failed${d.branch ? ` on ${d.branch}` : ""}${d.commit ? `: "${d.commit}"` : ""}`;
+    case "build_fixed":
+      return `build is working again${d.commit ? `: "${d.commit}"` : ""}`;
     case "prompt_saved":
       return `saved prompt version ${d.version}`;
     default:
