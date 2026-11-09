@@ -236,7 +236,8 @@ export function MapExplorer({ data, actorName }: { data: MapData; actorName: str
 
   const onPointerDown = (e: React.PointerEvent) => {
     stopFlight();
-    (e.currentTarget as Element).setPointerCapture(e.pointerId);
+    // The pointer is captured only once a drag or pinch starts (below): capturing it here would
+    // send the click to the map itself instead of the country under the cursor.
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     const pts = [...pointers.current.values()];
     gesture.current = {
@@ -254,7 +255,12 @@ export function MapExplorer({ data, actorName }: { data: MapData; actorName: str
     const g = gesture.current;
     if (!g.view) return;
     const pts = [...pointers.current.values()];
+    const capture = () => {
+      const el = e.currentTarget as Element;
+      if (!el.hasPointerCapture(e.pointerId)) el.setPointerCapture(e.pointerId);
+    };
     if (pts.length === 2 && g.dist && g.mid) {
+      capture();
       const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
       setView(zoomAround(g.view, Math.log2(dist / g.dist), g.mid[0], g.mid[1]));
       return;
@@ -263,6 +269,7 @@ export function MapExplorer({ data, actorName }: { data: MapData; actorName: str
     const dy = e.clientY - g.y;
     if (!g.moved && Math.hypot(dx, dy) < 4) return;
     g.moved = true;
+    capture();
     setHover(null);
     const sc = scaleOf(g.view.z);
     setView(clampView({ lon: g.view.lon - dx / sc / toRad, y: g.view.y + dy / sc, z: g.view.z }, boxRef.current));
